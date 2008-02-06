@@ -1,0 +1,58 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_install().
+ */
+
+function multisite_search_install() {
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_dataset (
+        sid int unsigned NOT NULL default '0',
+        type varchar(16) default NULL,
+        data longtext NOT NULL,
+        subdmn_id varchar(255) NOT NULL,
+        KEY sid_type (sid, type, subdmn_id)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+
+      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_index (
+        word varchar(50) NOT NULL default '',
+        sid int unsigned NOT NULL default '0',
+        type varchar(16) default NULL,
+        subdmn_id varchar(255) NOT NULL,
+        fromsid int unsigned NOT NULL default '0',
+        fromtype varchar(16) default NULL,
+        fromsubdmn_id varchar(255) NOT NULL,
+        score float default NULL,
+        KEY sid_type (sid, type, subdmn_id),
+        KEY from_sid_type (fromsid, fromtype, fromsubdmn_id),
+        KEY word (word)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+
+      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_total (
+        word varchar(50) NOT NULL default '',
+        count float default NULL,
+        PRIMARY KEY (word)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+      
+      // store multisite information 
+      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_sites (
+        site_id INT(11) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+        table_prefix VARCHAR(225) NOT NULL, 
+        site_url VARCHAR(225) NOT NULL
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function multisite_search_uninstall() {
+  db_query('DROP TABLE IF EXISTS multisite_drupal_search_dataset');
+  db_query('DROP TABLE IF EXISTS multisite_drupal_search_index');
+  db_query('DROP TABLE IF EXISTS multisite_drupal_search_total');
+  db_query('DROP TABLE IF EXISTS multisite_drupal_search_sites');
+}

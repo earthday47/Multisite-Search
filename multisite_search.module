@@ -1,0 +1,560 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Drupal Multisite search installation.
+ */
+
+/**
+* Implementation hook_help();
+*/
+function multisite_search_help($section) {
+  global $user;
+  switch ($section) {
+    case 'admin/modules#description':
+      // This description is shown in the listing at admin/modules.
+      return t('Notify site admin when new node has been created.');
+  }
+}
+
+function multisite_search_menu($may_cache) {
+  $items = array();
+	
+  if($may_cache){
+  }
+  else{
+    $items[] = array('path' => 'admin/mssearch',
+      'title' => t('Multisite Configuration'),
+      'description' => t("Manage sub site's info."),
+      'position' => 'left',
+      'weight' => -10,
+      'callback' => 'add_multisite_for_mssearch',
+      'access' => user_access('administer site configuration'),
+    );
+  if( is_numeric(arg(2))) { 
+    $items[] = array('path' => 'admin/mssearch/'.arg(2).'/delete',
+      'title' => t('Delete sub-site'),
+      'description' => t("Manage sub site's for search."),
+      'position' => 'left',
+      'weight' => -10,
+      'type'=>MENU_CALLBACK,
+      'callback' => 'drupal_get_form',
+      'callback arguments' => array('multisite_for_mssearch_delete_confirm', arg(2)),
+      'access' => user_access('administer site configuration'),
+    );
+  }  
+}
+  return $items;	
+}
+
+/**
+ * Menu callback -- ask for confirmation of node deletion
+ */
+function multisite_for_mssearch_delete_confirm($siteid) {
+ $form['site_id'] = array('#type' => 'value', '#value' => $siteid);
+
+ return confirm_form($form,
+   t('Are you sure you want to delete sub site id '.$siteid),
+   $_GET['destination'] ? $_GET['destination'] : 'admin/mssearch',
+   t('This action cannot be undone.'),
+   t('Delete'), t('Cancel'));
+}
+
+function multisite_for_mssearch_delete_confirm_submit($form_id, $form_values) {
+  if ($form_values['confirm']) {
+    multisite_for_mssearch_delete_site($form_values['site_id']);
+  }
+  return 'admin/mssearch';
+}
+
+function multisite_for_mssearch_delete_site($site_id){ 
+  // site id is given 
+  // get details of this site ?? 
+  // delete all data related to this site from 3 search table ?? 
+  $subdmn_id = get_subdmn_id($site_id);
+  db_query("DELETE FROM multisite_drupal_search_sites WHERE site_id = %d", $site_id);
+  db_query("DELETE FROM multisite_drupal_search_dataset WHERE subdmn_id = '%s'",$subdmn_id);
+  db_query("DELETE FROM multisite_drupal_search_index WHERE subdmn_id = '%s'",$subdmn_id);
+  drupal_set_message(t("Sub-site deleted successfully."));
+}
+
+function get_subdmn_id($site_id){
+
+  $object =  db_fetch_object(db_query("SELECT table_prefix FROM multisite_drupal_search_sites WHERE site_id=%d",$site_id));
+  return $object->table_prefix;
+
+}
+function add_multisite_for_mssearch(){
+  $output = "";
+  // show all existing sub-site 
+  
+  $sql = db_query("SELECT * FROM multisite_drupal_search_sites ORDER BY site_id");
+  $total  = db_num_rows($sql);
+  
+  $header = array("Site id", "Table prefix", "Site URL", "Operations");
+  $rows = array();
+    
+  if($total == 0) {
+  	$rows[] = array('data'=>array( array('data'=>'No site found', 'colspan'=>4, 'align'=>'center')));
+  }
+  while($res = db_fetch_array($sql)){
+      	$rows[] = array($res['site_id'], $res['table_prefix'], $res['site_url'], l("delete", 'admin/mssearch/'.$res['site_id'].'/delete'));	
+  }
+
+  $output .= theme('table',$header,$rows);
+  $output .= "<br /><h2>Add New Sub-Site</h2>";
+  $output .= drupal_get_form("add_multisite_for_mssearch_form");
+
+  return $output;	
+}
+
+function add_multisite_for_mssearch_form(){
+  $form = array();
+
+  $form['table_prefix'] = array(
+    '#title'=>'Enter sub-site table prefix',
+    '#type' => 'textfield',
+    '#size' => 15,
+    '#default_value' => '',
+    '#required'=>TRUE,
+    '#attributes' => array('title' => t('Enter the table prefix of subsite.')),
+  );
+  $form['site_url'] = array(
+    '#title'=>'Enter sub-site URL',
+    '#type' => 'textfield',
+    '#size' => 15,
+    '#required'=>TRUE,
+    '#default_value' => '',
+    '#description' => 'eg: http://subdomainname.domainname.com',
+    '#attributes' => array('title' => t('Enter complete subsite URL. eg: ')),
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
+  
+  return $form;
+}
+
+function add_multisite_for_mssearch_form_submit($form_id, $form_values) {
+  // save subsite 	
+  
+  db_query("INSERT INTO multisite_drupal_search_sites VALUES(NULL, '%s', '%s')", $form_values['table_prefix'], $form_values['site_url']); 
+  return;
+}
+
+/**
+ * Create multisite search engine block 
+ *
+ * @param unknown_type $op
+ * @param unknown_type $delta
+ * @param unknown_type $edit
+ * @return unknown
+ */
+function multisite_search_block($op = 'list', $delta = 0, $edit = array()) {
+  // The $op parameter determines what piece of information is being requested.
+  switch ($op) {
+    case 'list':
+      $blocks[0]['info'] = t('Multisite search');
+      return $blocks;
+    case 'configure':
+      $form = array();
+      if ($delta == 0) {
+        // All we need to provide is a text field, Drupal will take care of
+        // the other block configuration options and the save button.
+      }
+      return $form;
+    case 'save':
+      // If $op is "save", we need to save settings from the configuration form.
+      // Since the first block is the only one that allows configuration, we
+      // need to check $delta to make sure we only save it.
+      if ($delta == 0) {
+        // Have Drupal save the string to the database.
+      }
+      return;
+    case 'view': default:
+      // If $op is "view", then we need to generate the block for display
+      // purposes. The $delta parameter tells us which block is being requested.
+      if ($op == 'view' && user_access('search content')) { 
+        switch ($delta) {
+          case 0:
+            // The subject is displayed at the top of the block. Note that it
+            // should be passed through t() for translation.
+            $block['subject'] = t('');
+            // The content of the block is typically generated by calling a custom
+            // function.
+            $block['content'] = drupal_get_form('multisite_search_block_form');
+            break;
+        }
+      }
+      return $block;
+  }
+} 
+
+
+/**
+ * Process a block search form submission.
+ */
+function multisite_search_box_form_submit($form_id, $form_values) {	
+
+  if($form_values['search_to'] == 0){
+    return 'search/multisite_search/'. trim($form_values[$form_id .'_keys']);	
+  }
+}
+
+
+/**
+ * Theme the theme search form.
+ */
+function theme_multisite_search_theme_form($form) {
+  return '<div id="search" class="container-inline">'. drupal_render($form) .'</div>';
+}
+
+/**
+ * Theme the block search form.
+ */
+function theme_multisite_search_block_form($form) {
+
+	$fst = drupal_render($form['multisite_search_block_form_keys']);
+	$sec = drupal_render($form['submit']);
+	$out = '<div class="container-inline">'. $fst.$sec .'</div>';
+	
+  return '<div>'.$out. '<div class="container-inline">'. drupal_render($form).'</div></div>';
+}
+
+function multisite_search_forms() {
+  $forms['multisite_search_theme_form']= array(
+    'callback' => 'multisite_search_box',
+    'callback arguments' => array('multisite_search_theme_form'),
+  );
+  $forms['multisite_search_block_form']= array(
+    'callback' => 'multisite_search_box',
+    'callback arguments' => array('multisite_search_block_form'),
+  );
+  return $forms;
+}
+
+
+/**
+ * Output a search form for the search block and the theme's search box.
+ */
+function multisite_search_box($form_id) {
+  // Use search_keys instead of keys to avoid ID conflicts with the search block.
+  $form[$form_id .'_keys'] = array(
+    '#type' => 'textfield',
+    '#size' => 15,	
+    '#default_value' => '',
+    '#attributes' => array('title' => t('Enter the terms you wish to search for.')),
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Search'));
+  // Always go to the search page since the search form is not guaranteed to be
+  // on every page.
+  $form['#action'] = url('search/multisite_search'); // node
+  $form['#base'] = 'multisite_search_box_form'; // call only one submit for all 
+
+  return $form;
+}
+
+// make a cron hook and update table taking all database tables and make prefix 
+/**
+ * Implementation of hook_cron().
+ *
+ * Fires hook_update_index() in all modules and cleans up dirty words (see
+ * search_dirty).
+ */
+function multisite_search_cron() {
+  // We register a shutdown function to ensure that search_total is always up
+  // to date.
+
+  // set this module weight to 10 
+  db_query("UPDATE {system} SET weight = 10 WHERE name = 'multisite_search'");
+
+  // Synchronise tables 
+  // delete all from all & insert new 
+  db_query('TRUNCATE TABLE multisite_drupal_search_dataset');
+  db_query('TRUNCATE TABLE multisite_drupal_search_index');
+  db_query('TRUNCATE TABLE multisite_drupal_search_total');
+   
+  // get all sites 
+  // get prefix 
+  
+  $res = db_query("SELECT * FROM multisite_drupal_search_sites ");
+  while($result = db_fetch_array($res)){
+  	// get table prefix 
+  	$tblpf = $result['table_prefix'];
+  	// insert into search dataset 
+  	$res1 = db_query("SELECT * FROM ".$tblpf."search_dataset");
+  	while($result1 = db_fetch_array($res1)){ 
+  		// insert into new multisite table 
+  		db_query("INSERT INTO multisite_drupal_search_dataset (sid, type, data, subdmn_id) VALUES (%d, '%s', '%s', '%s')", $result1['sid'], $result1['type'], $result1['data'], $tblpf);
+  	}
+  	// insert into search index 
+  	$res2 = db_query("SELECT * FROM ".$tblpf."search_index");
+  	while($result2 = db_fetch_array($res2)){ 
+  		// insert into new multisite table 
+  		db_query("INSERT INTO multisite_drupal_search_index (word, sid, type, subdmn_id, fromsid, fromtype, fromsubdmn_id, score) VALUES ('%s', %d, '%s', '%s', '%s', %d, '%s', %f)", $result2['word'], $result2['sid'], $result2['type'], $tblpf, $result2['fromsid'], $result2['fromtype'], $tblpf, $result2['score']);
+  	}
+  	// ??????  how to proceed with this in a better way 
+  	// insert into search total -- need to have done without cron job 
+  	$res3 = db_query("SELECT DISTINCT (word) FROM multisite_drupal_search_index");
+  	while($result3 = db_fetch_array($res3)){ 
+  	  // for each word update search total
+  	  $word = $result3['word'];
+  	  $total = db_result(db_query("SELECT SUM(score) FROM multisite_drupal_search_index WHERE word = '%s'", $word));
+  	  // Apply Zipf's law to equalize the probability distribution
+  	  $total = log10(1 + 1/(max(1, $total)));
+  	  db_query("UPDATE multisite_drupal_search_total SET count = %f WHERE word = '%s'", $total, $word);
+              if (!db_affected_rows()) {
+                db_query("INSERT INTO multisite_drupal_search_total (word, count) VALUES ('%s', %f)", $word, $total);
+              }
+  	}
+  }		
+}
+
+/**
+* Implementation of hook_search().
+*/
+function multisite_search_search($op = 'search', $keys = NULL) {
+	
+  switch ($op) {  
+    case 'name':
+      return t('web site'); // Used on search tab. 
+    case 'reset':
+    return;
+    case 'search': 
+    // Search the index for the keywords that were entered.
+      // Build matching conditions
+      list($join1, $where1) = _db_rewrite_sql();
+      $arguments1 = array();
+      $conditions1 = 'n.status = 1';
+
+      if ($type = search_query_extract($keys, 'type')) {
+        $types = array();
+        foreach (explode(',', $type) as $t) {
+          $types[] = "n.type = '%s'";
+          $arguments1[] = $t;
+        }
+        $conditions1 .= ' AND ('. implode(' OR ', $types) .')';
+        $keys = search_query_insert($keys, 'type');
+      }
+
+      if ($category = search_query_extract($keys, 'category')) {
+        $categories = array();
+        foreach (explode(',', $category) as $c) {
+          $categories[] = "tn.tid = %d";
+          $arguments1[] = $c;
+        }
+        $conditions1 .= ' AND ('. implode(' OR ', $categories) .')';
+        $join1 .= ' INNER JOIN {term_node} tn ON n.nid = tn.nid';
+        $keys = search_query_insert($keys, 'category');
+      }
+
+      // Build ranking expression (we try to map each parameter to a
+      // uniform distribution in the range 0..1).
+      $ranking = array();
+      $arguments2 = array();
+      $join2 = '';
+      // Used to avoid joining on node_comment_statistics twice
+      $stats_join = FALSE;
+      $total = 0;
+
+      // 1. factor 
+      if ($weight = (int)variable_get('node_rank_relevance', 5)) {
+        // Average relevance values hover around 0.15
+        $ranking[] = '%d * i.relevance';
+        $arguments2[] = $weight;
+        $total += $weight;
+      }
+      
+      // 2.factor 
+      if ($weight = (int)variable_get('node_rank_recent', 5)) {
+        // Exponential decay with half-life of 6 months, starting at last indexed node
+        $ranking[] = '%d * POW(2, (GREATEST(n.created, n.changed, c.last_comment_timestamp) - %d) * 6.43e-8)';
+        $arguments2[] = $weight;
+        $arguments2[] = (int)variable_get('node_cron_last', 0);
+        $join2 .= ' INNER JOIN {node} n ON n.nid = i.sid LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
+        $stats_join = TRUE;
+        $total += $weight;
+      }
+      
+      // 3.factor 
+      if (module_exists('comment') && $weight = (int)variable_get('node_rank_comments', 5)) {
+        // Inverse law that maps the highest reply count on the site to 1 and 0 to 0.
+        $scale = variable_get('node_cron_comments_scale', 0.0);
+        $ranking[] = '%d * (2.0 - 2.0 / (1.0 + c.comment_count * %f))';
+        $arguments2[] = $weight;
+        $arguments2[] = $scale;
+        if (!$stats_join) {
+          $join2 .= ' LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
+        }
+        $total += $weight;
+      }
+      
+      // 4.factor 
+      if (module_exists('statistics') && variable_get('statistics_count_content_views', 0) &&
+          $weight = (int)variable_get('node_rank_views', 5)) {
+        // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
+        $scale = variable_get('node_cron_views_scale', 0.0);
+        $ranking[] = '%d * (2.0 - 2.0 / (1.0 + nc.totalcount * %f))';
+        $arguments2[] = $weight;
+        $arguments2[] = $scale;
+        $join2 .= ' LEFT JOIN {node_counter} nc ON nc.nid = i.sid';
+        $total += $weight;
+      }
+      $select2 = (count($ranking) ? implode(' + ', $ranking) : 'i.relevance') .' AS score';
+      
+      // study things before this and is this needed assumption no 
+      // Do search simple no need other table 
+      $find = do_multisite_drupal_search($keys, 'node');  
+
+      // Load results
+      $results = array();
+      foreach ($find as $item) { 
+      	// get site table prefix 
+      	// load some other site node how ?? 
+      	$tbl_prefix = $item->subdmn_id; 
+      	// get this table prefix item site url 
+      	$msite_sql = db_query("SELECT * FROM multisite_drupal_search_sites WHERE table_prefix='%s'", $tbl_prefix);
+      	$msite_res = db_fetch_array($msite_sql);
+      	$msite_url = $msite_res['site_url'];
+      	
+      	global $db_prefix;
+      	global $base_url;
+      	global $user;
+
+        // Build the node body. 
+        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format, u.uid, u.name, u.picture, u.data FROM ".$tbl_prefix."node n INNER JOIN ".$tbl_prefix."users u ON u.uid = n.uid INNER JOIN ".$tbl_prefix."node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));
+
+        // Fetch comments for snippet 
+        // Fetch terms for snippet
+        $extra = array(); 
+        // assuming have to show only total comment 
+        $comments = db_result(db_query('SELECT comment_count FROM '.$tbl_prefix.'node_comment_statistics WHERE nid = %d', $node->nid));
+        $extra[] = format_plural($comments, '1 comment', '@count comments');
+
+        // attachment module ???
+        if( user_access('access user profiles') ){ 
+          $tuname = "<a href='".$msite_url.url('user/'. $node->uid)."'>".$node->name."</a>";	
+        }else{
+          $tuname = $node->name;	
+        }
+        // check access permission and do accordingly 
+        $results[] = array('link' => ''.$msite_url.url('node/'. $item->sid),
+                           'type' => node_get_types('name', $node),
+                           'title' => $node->title,
+                           'user' => $tuname,
+                           'date' => $node->changed,
+                           'node' => $node,
+                           'extra' => $extra,
+                           'score' => $item->score / $total,
+                           'snippet' => search_excerpt($keys, $node->body));
+      }
+      return $results;
+  }
+}
+
+/**
+ * Do a query on the full-text search index for a word or words.
+ *
+ * This function is normally only called by each module that support the
+ * indexed search (and thus, implements hook_update_index()).
+ *
+ * Two queries are performed which can be extended by the caller.
+ *
+ * The first query SELECTs a set of possible matches based on the search index
+ * and any extra given restrictions. This is the classic "OR" search.
+ *
+ * SELECT i.type, i.sid, SUM(i.score*t.count) AS relevance
+ * FROM {search_index} i
+ * INNER JOIN {search_total} t ON i.word = t.word
+ * $join1
+ * WHERE $where1 AND (...)
+ * GROUP BY i.type, i.sid
+ *
+ * The second query further refines this set by verifying advanced text
+ * conditions (such as AND, negative or phrase matches), and orders the results
+ * on a the column or expression 'score':
+ *
+ * SELECT i.type, i.sid, $select2
+ * FROM temp_search_sids i
+ * INNER JOIN {search_dataset} d ON i.sid = d.sid AND i.type = d.type
+ * $join2
+ * WHERE (...)
+ * ORDER BY score DESC
+ *
+ * @param $keywords
+ *   A search string as entered by the user.
+ *
+ * @param $type
+ *   A string identifying the calling module.
+ *
+ * @param $join1
+ *   (optional) Inserted into the JOIN part of the first SQL query.
+ *   For example "INNER JOIN {node} n ON n.nid = i.sid".
+ *
+ * @param $where1
+ *   (optional) Inserted into the WHERE part of the first SQL query.
+ *   For example "(n.status > %d)".
+ *
+ * @param $arguments1
+ *   (optional) Extra SQL arguments belonging to the first query.
+ *
+ * @param $select2
+ *   (optional) Inserted into the SELECT pat of the second query. Must contain
+ *   a column selected as 'score'.
+ *   defaults to 'i.relevance AS score'
+ *
+ * @param $join2
+ *   (optional) Inserted into the JOIN par of the second SQL query.
+ *   For example "INNER JOIN {node_comment_statistics} n ON n.nid = i.sid"
+ *
+ * @param $arguments2
+ *   (optional) Extra SQL arguments belonging to the second query parameter.
+ *
+ * @param $sort_parameters
+ *   (optional) SQL arguments for sorting the final results.
+ *              Default: 'ORDER BY score DESC'
+ *
+ * @return
+ *   An array of SIDs for the search results.
+ *
+ * @ingroup search
+ */
+function do_multisite_drupal_search($keywords, $type, $join1 = '', $where1 = '1', $arguments1 = array(), $select2 = 'i.relevance AS score', $join2 = '', $arguments2 = array(), $sort_parameters = 'ORDER BY score DESC') {
+  $query = search_parse_query($keywords);
+
+  if ($query[2] == '') {
+    form_set_error('keys', t('You must include at least one positive keyword with @count characters or more.', array('@count' => variable_get('minimum_word_size', 3))));
+  }
+  if ($query === NULL || $query[0] == '' || $query[2] == '') {
+    return array();
+  }
+
+  // First pass: select all possible matching sids, doing a simple index-based OR matching on the keywords.
+  // 'matches' is used to reject those items that cannot possibly match the query.
+  $conditions = $where1 .' AND ('. $query[2] .") AND i.type = '%s'";
+  $arguments = array_merge($arguments1, $query[3], array($type, $query[4]));
+  $result = db_query_temporary("SELECT i.type, i.sid, i.subdmn_id, SUM(i.score * t.count) AS relevance, COUNT(*) AS matches FROM multisite_drupal_search_index i INNER JOIN multisite_drupal_search_total t ON i.word = t.word $join1 WHERE $conditions GROUP BY i.subdmn_id, i.type, i.sid HAVING COUNT(*) >= %d", $arguments, 'temp_search_sids');
+
+  // Calculate maximum relevance, to normalize it
+  $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_search_sids'));
+  if (!$normalize) {
+    return array();
+  }
+  $select2 = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $select2);
+
+  // Second pass: only keep items that match the complicated keywords conditions (phrase search, negative keywords, ...)
+  $conditions = '('. $query[0] .')';
+  $arguments = array_merge($arguments2, $query[1]);
+  $result = db_query_temporary("SELECT i.type, i.sid, i.subdmn_id, $select2 FROM temp_search_sids i INNER JOIN multisite_drupal_search_dataset d ON i.sid = d.sid AND i.type = d.type AND i.subdmn_id = d.subdmn_id $join2 WHERE $conditions $sort_parameters", $arguments, 'temp_search_results');
+  if (($count = db_result(db_query('SELECT COUNT(*) FROM temp_search_results'))) == 0) {
+    return array();
+  }
+  $count_query = "SELECT $count";
+
+  // Do actual search query
+  $result = pager_query("SELECT * FROM temp_search_results", 10, 0, $count_query);
+  $results = array();
+  while ($item = db_fetch_object($result)) {
+    $results[] = $item;
+  }
+  return $results;
+}

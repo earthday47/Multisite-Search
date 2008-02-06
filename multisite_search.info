@@ -1,0 +1,5 @@
+; $Id$
+name = "Multisite search"
+description = "Search across all web sites seamlessly."
+dependencies = search
+package = Multisite Search
