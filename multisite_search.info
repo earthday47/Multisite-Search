@@ -1,5 +1,10 @@
 ; $Id$
 name = "Multisite search"
 description = "Search across all web sites seamlessly."
-dependencies = search
+dependencies[] = search
 package = Multisite Search
+
+version = "6.x-1.x-dev"
+core = 6.x
+php = 5.1
+

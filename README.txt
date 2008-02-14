@@ -2,7 +2,7 @@
 
 OVERVIEW
 Multisite_search is a module which is useful for searching data from multisites.
-Currently this module has limitation that it search from only one database.
+
 
 DEPENDENCIES
 This module depends on the search module.
@@ -16,8 +16,12 @@ So that it can also configured from other site's admin.
 And if only you want to visible in one site then paste there.
 so that only that site's admin configured.
 
-For installing multisite_search module first you have to enable search module.
+For installing multisite_search module first you have to enable search module in all other sites
+because in Drupal-6 search module is not enabled by default.
+so that it can also search from other sites.
 Then enable multisite_search module.
+
+If you want to search from other sub-sites for that you have to enable search module to search from that site.
 
 For configuration 
 GO TO Administer->Multisite Configuration 

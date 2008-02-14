@@ -6,53 +6,72 @@
  */
 
 function multisite_search_install() {
-  switch ($GLOBALS['db_type']) {
-    case 'mysql':
-    case 'mysqli':
-      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_dataset (
-        sid int unsigned NOT NULL default '0',
-        type varchar(16) default NULL,
-        data longtext NOT NULL,
-        subdmn_id varchar(255) NOT NULL,
-        KEY sid_type (sid, type, subdmn_id)
-      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+  // Create tables.
+     drupal_install_schema('multisite_search');
+}
+//function multisite_search_schema(){
+function multisite_search_schema(){  
 
-      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_index (
-        word varchar(50) NOT NULL default '',
-        sid int unsigned NOT NULL default '0',
-        type varchar(16) default NULL,
-        subdmn_id varchar(255) NOT NULL,
-        fromsid int unsigned NOT NULL default '0',
-        fromtype varchar(16) default NULL,
-        fromsubdmn_id varchar(255) NOT NULL,
-        score float default NULL,
-        KEY sid_type (sid, type, subdmn_id),
-        KEY from_sid_type (fromsid, fromtype, fromsubdmn_id),
-        KEY word (word)
-      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+  $schema['multisite_drupal_search_dataset'] = array(
+    'fields' => array(
+      'sid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
+      'type'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
+      'data'=>array('type'=>'text','not null' => TRUE,'size'=>'big'),
+      'subdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255)
+    ),
+    'indexes' => array(
+       'sid_type' => array('sid','type','subdmn_id')
+    ),
+  );
 
-      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_total (
-        word varchar(50) NOT NULL default '',
-        count float default NULL,
-        PRIMARY KEY (word)
-      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
-      
+ $schema['multisite_drupal_search_index'] = array(
+    'fields' => array(
+      'word'=>array('type'=>'varchar','not null' => TRUE,'default'=>'','length'=>50),
+      'sid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
+      'type'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
+      'subdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255),
+      'fromsid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
+      'fromtype'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
+      'fromsubdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255),
+      'score'=>array('type'=>'float','default'=>NULL)
+    ),
+    'indexes' => array(
+       'sid_type' => array('sid','type','subdmn_id'),
+       'from_sid_type' => array('fromsid','fromtype','fromsubdmn_id'),
+       'word' => array('word')
+    ),
+  );
+
+  $schema['multisite_drupal_search_total'] = array(
+    'fields' => array(
+      'word'=>array('type'=>'varchar','not null' => TRUE,'default'=>'','length'=>50),
+      'count'=>array('type'=>'float','default'=>NULL)
+    ),
+      'primary key' => array('word'),
+  );
       // store multisite information 
-      db_query("CREATE TABLE IF NOT EXISTS multisite_drupal_search_sites (
-        site_id INT(11) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
-        table_prefix VARCHAR(225) NOT NULL, 
-        site_url VARCHAR(225) NOT NULL
-      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
-      break;
-  }
+  $schema['multisite_drupal_search_sites'] = array(
+    'fields' => array(
+      'site_id'=>array('type'=>'serial','unsigned'=>TRUE,'not null'=>TRUE,'length'=>11),
+      'table_prefix'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225),
+      'site_url'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225)
+    ),
+      'primary key'=>array('site_id'),
+  );
+
+	return $schema;
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function multisite_search_uninstall() {
+
+  drupal_uninstall_schema('multisite_search');
+  // Drop tables.
   db_query('DROP TABLE IF EXISTS multisite_drupal_search_dataset');
   db_query('DROP TABLE IF EXISTS multisite_drupal_search_index');
   db_query('DROP TABLE IF EXISTS multisite_drupal_search_total');
   db_query('DROP TABLE IF EXISTS multisite_drupal_search_sites');
+  
 }

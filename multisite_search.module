@@ -9,63 +9,58 @@
 /**
 * Implementation hook_help();
 */
-function multisite_search_help($section) {
+function multisite_search_help($path,$arg) {
   global $user;
-  switch ($section) {
+  switch ($path) {
     case 'admin/modules#description':
       // This description is shown in the listing at admin/modules.
       return t('Notify site admin when new node has been created.');
   }
 }
 
-function multisite_search_menu($may_cache) {
+function multisite_search_theme(){
+
+  return array(
+    'multisite_search_theme_form'=>array(
+      'arguments'=>array('form'=>NULL),
+    ),
+    'multisite_search_block_form'=>array(
+      'arguments'=>array('form'=>NULL),
+    ),
+  );
+}
+
+function multisite_search_menu() {
   $items = array();
 	
-  if($may_cache){
-  }
-  else{
-    $items[] = array('path' => 'admin/mssearch',
-      'title' => t('Multisite Configuration'),
-      'description' => t("Manage sub site's info."),
+    $items['admin/mssearch'] = array(
+      'title' => 'Multisite Configuration',
+      'description' => 'Manage sub site\'s info',
       'position' => 'left',
       'weight' => -10,
-      'callback' => 'add_multisite_for_mssearch',
-      'access' => user_access('administer site configuration'),
+      'page callback' => 'add_multisite_for_mssearch',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
     );
-  if( is_numeric(arg(2))) { 
-    $items[] = array('path' => 'admin/mssearch/'.arg(2).'/delete',
-      'title' => t('Delete sub-site'),
-      'description' => t("Manage sub site's for search."),
-      'position' => 'left',
-      'weight' => -10,
-      'type'=>MENU_CALLBACK,
-      'callback' => 'drupal_get_form',
-      'callback arguments' => array('multisite_for_mssearch_delete_confirm', arg(2)),
-      'access' => user_access('administer site configuration'),
-    );
-  }  
-}
   return $items;	
 }
 
 /**
  * Menu callback -- ask for confirmation of node deletion
  */
-function multisite_for_mssearch_delete_confirm($siteid) {
- $form['site_id'] = array('#type' => 'value', '#value' => $siteid);
+function multisite_for_mssearch_delete_confirm(&$form_state,$siteid) {
+  $form['site_id'] = array('#type' => 'value', '#value' => $siteid);
 
- return confirm_form($form,
-   t('Are you sure you want to delete sub site id '.$siteid),
-   $_GET['destination'] ? $_GET['destination'] : 'admin/mssearch',
-   t('This action cannot be undone.'),
-   t('Delete'), t('Cancel'));
+  return confirm_form($form,t('Are you sure you want to delete sub site id '.$siteid),$_GET['destination'] ?      $_GET['destination'] : 'admin/mssearch',t('This action cannot be undone.'),t('Delete'), t('Cancel'));
 }
 
-function multisite_for_mssearch_delete_confirm_submit($form_id, $form_values) {
-  if ($form_values['confirm']) {
-    multisite_for_mssearch_delete_site($form_values['site_id']);
+function multisite_for_mssearch_delete_confirm_submit($form, &$form_state) {
+
+  if ($form_state['values']['confirm']) {
+    multisite_for_mssearch_delete_site($form_state['values']['site_id']);
   }
-  return 'admin/mssearch';
+  $form_state['redirect'] = 'admin/mssearch';
+
 }
 
 function multisite_for_mssearch_delete_site($site_id){ 
@@ -86,11 +81,16 @@ function get_subdmn_id($site_id){
 
 }
 function add_multisite_for_mssearch(){
+
+  if (arg(3)== 'delete') { 
+       return drupal_get_form('multisite_for_mssearch_delete_confirm',arg(2));
+  }
+
   $output = "";
   // show all existing sub-site 
   
   $sql = db_query("SELECT * FROM multisite_drupal_search_sites ORDER BY site_id");
-  $total  = db_num_rows($sql);
+  $total  = db_result(db_query("SELECT COUNT(*) FROM multisite_drupal_search_sites ORDER BY site_id"));
   
   $header = array("Site id", "Table prefix", "Site URL", "Operations");
   $rows = array();
@@ -117,7 +117,6 @@ function add_multisite_for_mssearch_form(){
     '#type' => 'textfield',
     '#size' => 15,
     '#default_value' => '',
-    '#required'=>TRUE,
     '#attributes' => array('title' => t('Enter the table prefix of subsite.')),
   );
   $form['site_url'] = array(
@@ -127,17 +126,16 @@ function add_multisite_for_mssearch_form(){
     '#required'=>TRUE,
     '#default_value' => '',
     '#description' => 'eg: http://subdomainname.domainname.com',
-    '#attributes' => array('title' => t('Enter complete subsite URL. eg: ')),
+    '#attributes' => array('title' => t('Enter complete subsite URL')),
   );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
   
   return $form;
 }
 
-function add_multisite_for_mssearch_form_submit($form_id, $form_values) {
+function add_multisite_for_mssearch_form_submit($form, &$form_state) {
   // save subsite 	
-  
-  db_query("INSERT INTO multisite_drupal_search_sites VALUES(NULL, '%s', '%s')", $form_values['table_prefix'], $form_values['site_url']); 
+  db_query("INSERT INTO multisite_drupal_search_sites VALUES(NULL, '%s', '%s')", $form_state['values']['table_prefix'], $form_state['values']['site_url']); 
   return;
 }
 
@@ -193,11 +191,9 @@ function multisite_search_block($op = 'list', $delta = 0, $edit = array()) {
 /**
  * Process a block search form submission.
  */
-function multisite_search_box_form_submit($form_id, $form_values) {	
-
-  if($form_values['search_to'] == 0){
-    return 'search/multisite_search/'. trim($form_values[$form_id .'_keys']);	
-  }
+function multisite_search_box_form_submit($form,&$form_state) {	
+  $form_id = $form['form_id']['#value'];
+  $form_state['redirect'] = 'search/multisite_search/'. trim($form_state['values'][$form_id .'_keys']);	
 }
 
 
@@ -236,20 +232,19 @@ function multisite_search_forms() {
 /**
  * Output a search form for the search block and the theme's search box.
  */
-function multisite_search_box($form_id) {
+function multisite_search_box(&$form_state,$form_id) {
+
   // Use search_keys instead of keys to avoid ID conflicts with the search block.
   $form[$form_id .'_keys'] = array(
+    '#title' => t('Search Multi-site'),
     '#type' => 'textfield',
     '#size' => 15,	
     '#default_value' => '',
     '#attributes' => array('title' => t('Enter the terms you wish to search for.')),
   );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Search'));
-  // Always go to the search page since the search form is not guaranteed to be
-  // on every page.
-  $form['#action'] = url('search/multisite_search'); // node
-  $form['#base'] = 'multisite_search_box_form'; // call only one submit for all 
-
+  $form['#submit'][] = 'multisite_search_box_form_submit';
+  // Always go to the search page since the search form is not guaranteed to be on every page.
   return $form;
 }
 
