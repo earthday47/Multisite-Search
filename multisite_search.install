@@ -1,18 +1,18 @@
-<?php
+<?php 
 // $Id$
-
 /**
  * Implementation of hook_install().
  */
-
 function multisite_search_install() {
-  // Create tables.
-     drupal_install_schema('multisite_search');
+  // Create tables. Will produce error if table sharing is configured
+  drupal_install_schema('multisite_search');
 }
-//function multisite_search_schema(){
-function multisite_search_schema(){  
 
-  $schema['multisite_drupal_search_dataset'] = array(
+/**
+ * Implementation of hook_schema().
+ */
+function multisite_search_schema(){  
+  $schema['multisite_search_dataset'] = array(
     'fields' => array(
       'sid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
       'type'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
@@ -24,7 +24,7 @@ function multisite_search_schema(){
     ),
   );
 
- $schema['multisite_drupal_search_index'] = array(
+  $schema['multisite_search_index'] = array(
     'fields' => array(
       'word'=>array('type'=>'varchar','not null' => TRUE,'default'=>'','length'=>50),
       'sid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
@@ -42,36 +42,36 @@ function multisite_search_schema(){
     ),
   );
 
-  $schema['multisite_drupal_search_total'] = array(
+  $schema['multisite_search_total'] = array(
     'fields' => array(
       'word'=>array('type'=>'varchar','not null' => TRUE,'default'=>'','length'=>50),
       'count'=>array('type'=>'float','default'=>NULL)
     ),
       'primary key' => array('word'),
   );
-      // store multisite information 
-  $schema['multisite_drupal_search_sites'] = array(
+  // store multisite information 
+  $schema['multisite_search_sites'] = array(
     'fields' => array(
       'site_id'=>array('type'=>'serial','unsigned'=>TRUE,'not null'=>TRUE,'length'=>11),
       'table_prefix'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225),
-      'site_url'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225)
+      'site_url'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225),
+      'site_name'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225)
     ),
       'primary key'=>array('site_id'),
   );
 
-	return $schema;
+  return $schema;
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function multisite_search_uninstall() {
-
   drupal_uninstall_schema('multisite_search');
+
   // Drop tables.
-  db_query('DROP TABLE IF EXISTS multisite_drupal_search_dataset');
-  db_query('DROP TABLE IF EXISTS multisite_drupal_search_index');
-  db_query('DROP TABLE IF EXISTS multisite_drupal_search_total');
-  db_query('DROP TABLE IF EXISTS multisite_drupal_search_sites');
-  
+  db_query('DROP TABLE IF EXISTS {multisite_search_dataset}');
+  db_query('DROP TABLE IF EXISTS {multisite_search_index}');
+  db_query('DROP TABLE IF EXISTS {multisite_search_total}');
+  db_query('DROP TABLE IF EXISTS {multisite_search_sites}');
 }

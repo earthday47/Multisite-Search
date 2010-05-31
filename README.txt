@@ -1,30 +1,55 @@
-// $id$
+$Id$
 
 OVERVIEW
 Multisite_search is a module which is useful for searching data from multisites.
-
+This is the new 2.x brance of Multisite search. It is not compatible with the previous 
+version of Multisite Search (database table changes).
 
 DEPENDENCIES
-This module depends on the search module.
+This module depends on the Search module.
 
+REQUIREMENTS
+This modules assumes the following is true:
+- You have a Multisite Drupal installation
+- You use table prefixing for each site (separate databases are not tested)
 
 INSTALLATION
-If you want to visible in all sites for centrally configuration then 
-Copy multisite_search folder and paste in ../sites/all/modules folder.
-So that it can also configured from other site's admin.
+1. Disable AND *UNINSTALL* any previous versions of Multisite Search.
 
-And if only you want to visible in one site then paste there.
-so that only that site's admin configured.
+2. Copy the multisite_search/ folder into the sites/all/modules directory.
 
-For installing multisite_search module first you have to enable search module in all other sites
-because in Drupal-6 search module is not enabled by default.
-so that it can also search from other sites.
-Then enable multisite_search module.
+CONFIGURATION
+Let's say we have 3 sites we want to share. They are prefixed like so:
+Site 1 - http://site1.com/ - 'site1_'
+Site 2 - http://site2.com/ - 'site2_'
+Site 3 - http://site3.com/ - 'site3_'
 
-If you want to search from other sub-sites for that you have to enable search module to search from that site.
+1. Install and enable Search and Multisite Search on all sites.
 
-For configuration 
-GO TO Administer->Multisite Configuration 
+If you want Site 1 to be able to search all sites, do the following:
+2. While logged into Site 1, go to Administer -> Site Configuration -> Multisite Configuration.
+3. Add all the sites to the table using the form.
+4. Run cron to index all the pages.
 
-If you dont have a prefix for your site then in textbox make a one space and enter your site URL. 
-After completion you have to run cron.
+You can search all sites from the generated block or from the 'All Sites' tab on the Search results page.
+
+If you want all the sites to have Multisite Search, you must repeat steps 2-4 for each site.
+
+ADVANCED CONFIGURATION
+Since doing the above for all sites is a major pain, you can also share the Multisite Search tables
+and only need to do steps 2-4 once.
+
+If you have shared tabled with the prefix 'shared_', you would add this to your settings.php file:
+$db_prefix = array(
+/* ..snip.. */
+  'multisite_search_dataset' => 'shared_',
+  'multisite_search_index'   => 'shared_',
+  'multisite_search_sites'   => 'shared_',
+  'multisite_search_total'   => 'shared_',
+);
+
+If you are sharing tables in a separate database, use . (period) instead of _ (underscore).
+
+Note: When you enable Multisite Search on multiple sites after doing this, you will get DB errors.
+This is normal and nothing is wrong.
+

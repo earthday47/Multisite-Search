@@ -1,10 +1,9 @@
 ; $Id$
-name = "Multisite search"
-description = "Search across all web sites seamlessly."
-dependencies[] = search
-package = Multisite Search
 
-version = "6.x-1.x-dev"
+name = "Multisite Search"
+description = "Enables searching across multiple sites of a Multisite installation."
+dependencies[] = search
+package = Other
+
 core = 6.x
 php = 5.1
-
