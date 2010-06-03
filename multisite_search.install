@@ -20,7 +20,7 @@ function multisite_search_schema(){
       'subdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255)
     ),
     'indexes' => array(
-       'sid_type' => array('sid','type','subdmn_id')
+      'sid_type' => array('sid','type','subdmn_id')
     ),
   );
 
@@ -36,9 +36,9 @@ function multisite_search_schema(){
       'score'=>array('type'=>'float','default'=>NULL)
     ),
     'indexes' => array(
-       'sid_type' => array('sid','type','subdmn_id'),
-       'from_sid_type' => array('fromsid','fromtype','fromsubdmn_id'),
-       'word' => array('word')
+      'sid_type' => array('sid','type','subdmn_id'),
+      'from_sid_type' => array('fromsid','fromtype','fromsubdmn_id'),
+      'word' => array('word')
     ),
   );
 

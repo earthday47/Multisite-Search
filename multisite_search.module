@@ -9,7 +9,7 @@
 /**
 * Implementation hook_help();
 */
-function multisite_search_help($path,$arg) {
+function multisite_search_help($path, $arg) {
   global $user;
   switch ($path) {
     case 'admin/modules#description':
@@ -18,14 +18,14 @@ function multisite_search_help($path,$arg) {
   }
 }
 
-function multisite_search_theme(){
+function multisite_search_theme() {
 
   return array(
-    'multisite_search_theme_form'=>array(
-      'arguments'=>array('form'=>NULL),
+    'multisite_search_theme_form' => array(
+      'arguments' => array('form' => NULL),
     ),
     'multisite_search_block_form'=>array(
-      'arguments'=>array('form'=>NULL),
+      'arguments' => array('form'=>NULL),
     ),
     'multisite_search_theme_search_result' => array(
       'arguments' => array('result' => NULL, 'type' => NULL),
@@ -52,7 +52,7 @@ function multisite_search_menu() {
 /**
  * Menu callback -- ask for confirmation of node deletion
  */
-function multisite_for_multisite_search_delete_confirm(&$form_state,$siteid) {
+function multisite_for_multisite_search_delete_confirm(&$form_state, $siteid) {
   $form['site_id'] = array('#type' => 'value', '#value' => $siteid);
 
   return confirm_form($form,t('Are you sure you want to delete sub site id '.$siteid),$_GET['destination'] ?      $_GET['destination'] : 'admin/settings/multisite_search',t('This action cannot be undone.'),t('Delete'), t('Cancel'));
@@ -67,26 +67,26 @@ function multisite_for_multisite_search_delete_confirm_submit($form, &$form_stat
 
 }
 
-function multisite_for_multisite_search_delete_site($site_id){ 
+function multisite_for_multisite_search_delete_site($site_id) { 
   // site id is given 
   // get details of this site ?? 
   // delete all data related to this site from 3 search table ?? 
   $subdmn_id = get_subdmn_id($site_id);
   db_query("DELETE FROM {multisite_search_sites} WHERE site_id = %d", $site_id);
-  db_query("DELETE FROM {multisite_search_dataset} WHERE subdmn_id = '%s'",$subdmn_id);
-  db_query("DELETE FROM {multisite_search_index} WHERE subdmn_id = '%s'",$subdmn_id);
+  db_query("DELETE FROM {multisite_search_dataset} WHERE subdmn_id = '%s'", $subdmn_id);
+  db_query("DELETE FROM {multisite_search_index} WHERE subdmn_id = '%s'", $subdmn_id);
   drupal_set_message(t("Sub-site deleted successfully."));
 }
 
-function get_subdmn_id($site_id){
+function get_subdmn_id($site_id) {
 
-  $object =  db_fetch_object(db_query("SELECT table_prefix FROM {multisite_search_sites} WHERE site_id=%d",$site_id));
+  $object =  db_fetch_object(db_query("SELECT table_prefix FROM {multisite_search_sites} WHERE site_id=%d", $site_id));
   return $object->table_prefix;
 
 }
-function add_multisite_for_multisite_search(){
+function add_multisite_for_multisite_search() {
   if (arg(4)== 'delete') { 
-       return drupal_get_form('multisite_for_multisite_search_delete_confirm',arg(3));
+       return drupal_get_form('multisite_for_multisite_search_delete_confirm', arg(3));
   }
 
   $output = "";
@@ -98,10 +98,12 @@ function add_multisite_for_multisite_search(){
   $header = array("Site id", "Table prefix", "Site URL", "Site Name", "Operations");
   $rows = array();
     
-  if($total == 0) {
-    $rows[] = array('data'=>array( array('data'=>'No site found', 'colspan'=>4, 'align'=>'center')));
+  if ($total == 0) {
+    $rows[] = array('data' => array(
+      array('data' => 'No site found', 'colspan' => 4, 'align' => 'center')
+    ));
   }
-  while($res = db_fetch_array($sql)){
+  while ($res = db_fetch_array($sql)) {
         $rows[] = array($res['site_id'], $res['table_prefix'], $res['site_url'], $res['site_name'], l("delete", 'admin/settings/multisite_search/'.$res['site_id'].'/delete')); 
   }
 
@@ -447,7 +449,7 @@ function multisite_search_search($op = 'search', $keys = NULL) {
         global $user;
 
         // Build the node body. 
-        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format, u.uid, u.name, u.picture, u.data FROM ".$tbl_prefix."node n INNER JOIN drupal_shared.users u ON u.uid = n.uid INNER JOIN ".$tbl_prefix."node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));
+        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format, u.uid, u.name, u.picture, u.data FROM ".$tbl_prefix."node n INNER JOIN {users} u ON u.uid = n.uid INNER JOIN ".$tbl_prefix."node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));
 
         // Fetch comments for snippet 
         // Fetch terms for snippet
