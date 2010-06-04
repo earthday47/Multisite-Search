@@ -7,8 +7,8 @@
  */
 
 /**
-* Implementation hook_help();
-*/
+ * Implementation hook_help();
+ */
 function multisite_search_help($path, $arg) {
   global $user;
   switch ($path) {
@@ -24,8 +24,8 @@ function multisite_search_theme() {
     'multisite_search_theme_form' => array(
       'arguments' => array('form' => NULL),
     ),
-    'multisite_search_block_form'=>array(
-      'arguments' => array('form'=>NULL),
+    'multisite_search_block_form' => array(
+      'arguments' => array('form' => NULL),
     ),
     'multisite_search_theme_search_result' => array(
       'arguments' => array('result' => NULL, 'type' => NULL),
@@ -36,16 +36,15 @@ function multisite_search_theme() {
 
 function multisite_search_menu() {
   $items = array();
-  
-    $items['admin/settings/multisite_search'] = array(
-      'title' => 'Multisite Configuration',
-      'description' => 'Manage sub site\'s info',
-      'position' => 'left',
-      'weight' => -10,
-      'page callback' => 'add_multisite_for_multisite_search',
-      'access callback' => 'user_access',
-      'access arguments' => array('administer site configuration'),
-    );
+  $items['admin/settings/multisite_search'] = array(
+    'title' => 'Multisite Configuration',
+    'description' => 'Manage sub site\'s info',
+    'position' => 'left',
+    'weight' => -10,
+    'page callback' => 'add_multisite_for_multisite_search',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+  );
   return $items;  
 }
 
@@ -54,12 +53,10 @@ function multisite_search_menu() {
  */
 function multisite_for_multisite_search_delete_confirm(&$form_state, $siteid) {
   $form['site_id'] = array('#type' => 'value', '#value' => $siteid);
-
-  return confirm_form($form,t('Are you sure you want to delete sub site id '.$siteid),$_GET['destination'] ?      $_GET['destination'] : 'admin/settings/multisite_search',t('This action cannot be undone.'),t('Delete'), t('Cancel'));
+  return confirm_form($form, t('Are you sure you want to delete sub site id ' . $siteid), $_GET['destination'] ? $_GET['destination'] : 'admin/settings/multisite_search', t('This action cannot be undone.'), t('Delete'), t('Cancel'));
 }
 
 function multisite_for_multisite_search_delete_confirm_submit($form, &$form_state) {
-
   if ($form_state['values']['confirm']) {
     multisite_for_multisite_search_delete_site($form_state['values']['site_id']);
   }
@@ -79,7 +76,6 @@ function multisite_for_multisite_search_delete_site($site_id) {
 }
 
 function get_subdmn_id($site_id) {
-
   $object =  db_fetch_object(db_query("SELECT table_prefix FROM {multisite_search_sites} WHERE site_id=%d", $site_id));
   return $object->table_prefix;
 
@@ -88,10 +84,8 @@ function add_multisite_for_multisite_search() {
   if (arg(4)== 'delete') { 
        return drupal_get_form('multisite_for_multisite_search_delete_confirm', arg(3));
   }
-
   $output = "";
   // show all existing sub-site 
-  
   $sql = db_query("SELECT * FROM {multisite_search_sites} ORDER BY site_id");
   $total  = db_result(db_query("SELECT COUNT(*) FROM {multisite_search_sites} ORDER BY site_id"));
   
@@ -104,40 +98,40 @@ function add_multisite_for_multisite_search() {
     ));
   }
   while ($res = db_fetch_array($sql)) {
-        $rows[] = array($res['site_id'], $res['table_prefix'], $res['site_url'], $res['site_name'], l("delete", 'admin/settings/multisite_search/'.$res['site_id'].'/delete')); 
+    $rows[] = array($res['site_id'], $res['table_prefix'], $res['site_url'], $res['site_name'], l("delete", 'admin/settings/multisite_search/' . $res['site_id'] . '/delete')); 
   }
 
-  $output .= theme('table',$header,$rows);
-  $output .= "<br /><h2>Add New Sub-Site</h2>";
+  $output .= theme('table', $header, $rows);
+  $output .= "<br /><h2>"> t('Add New Sub-Site') ."</h2>";
   $output .= drupal_get_form("add_multisite_for_multisite_search_form");
 
   return $output; 
 }
 
-function add_multisite_for_multisite_search_form(){
+function add_multisite_for_multisite_search_form() {
   $form = array();
 
   $form['table_prefix'] = array(
-    '#title'=> t('Sub-site table prefix'),
-    '#type' => 'textfield',
-    '#size' => 15,
+    '#title'    => t('Sub-site table prefix'),
+    '#type'     => 'textfield',
+    '#size'     => 15,
     '#required' => TRUE,
     '#default_value' => '',
-    '#attributes' => array('title' => t('Enter the table prefix of the sub-site.')),
+    '#attributes'    => array('title' => t('Enter the table prefix of the sub-site.')),
   );
   $form['site_url'] = array(
-    '#title'=> t('Sub-site URL'),
-    '#type' => 'textfield',
-    '#size' => 20,
+    '#title'    => t('Sub-site URL'),
+    '#type'     => 'textfield',
+    '#size'     => 20,
     '#required' => TRUE,
     '#default_value' => '',
     '#description' => 'The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>',
     '#attributes' => array('title' => t('Enter the complete sub-site URL')),
   );
   $form['site_name'] = array(
-    '#title'=> t('Enter the sub-site name'),
-    '#type' => 'textfield',
-    '#size' => 20,
+    '#title'    => t('Enter the sub-site name'),
+    '#type'     => 'textfield',
+    '#size'     => 20,
     '#required' => TRUE,
     '#default_value' => '',
     '#description' => 'Displayed on the search results page.',
@@ -205,7 +199,7 @@ function multisite_search_block($op = 'list', $delta = 0, $edit = array()) {
 /**
  * Process a block search form submission.
  */
-function multisite_search_box_form_submit($form,&$form_state) { 
+function multisite_search_box_form_submit($form, &$form_state) { 
   $form_id = $form['form_id']['#value'];
   $form_state['redirect'] = 'search/multisite_search/'. trim($form_state['values'][$form_id .'_keys']); 
 }
@@ -225,9 +219,9 @@ function theme_multisite_search_block_form($form) {
 
   $fst = drupal_render($form['multisite_search_block_form_keys']);
   $sec = drupal_render($form['submit']);
-  $out = '<div class="container-inline">'. $fst.$sec .'</div>';
+  $out = '<div class="container-inline">'. $fst . $sec .'</div>';
   
-  return '<div>'.$out. '<div class="container-inline">'. drupal_render($form).'</div></div>';
+  return '<div>' . $out . '<div class="container-inline">' . drupal_render($form) . '</div></div>';
 }
 
 /**
@@ -260,11 +254,10 @@ function multisite_search_forms() {
   return $forms;
 }
 
-
 /**
  * Output a search form for the search block and the theme's search box.
  */
-function multisite_search_box(&$form_state,$form_id) {
+function multisite_search_box(&$form_state, $form_id) {
 
   // Use search_keys instead of keys to avoid ID conflicts with the search block.
   $form[$form_id .'_keys'] = array(
@@ -304,34 +297,34 @@ function multisite_search_cron() {
   // get prefix 
   
   $res = db_query("SELECT * FROM {multisite_search_sites} ");
-  while($result = db_fetch_array($res)){
+  while ($result = db_fetch_array($res)) {
     // get table prefix 
     $tblpf = $result['table_prefix'];
     // insert into search dataset 
-    $res1 = db_query("SELECT * FROM ".$tblpf."search_dataset");
-    while($result1 = db_fetch_array($res1)){ 
+    $res1 = db_query("SELECT * FROM ". $tblpf ."search_dataset");
+    while ($result1 = db_fetch_array($res1)) { 
       // insert into new multisite table 
       db_query("INSERT INTO {multisite_search_dataset} (sid, type, data, subdmn_id) VALUES (%d, '%s', '%s', '%s')", $result1['sid'], $result1['type'], $result1['data'], $tblpf);
     }
     // insert into search index 
-    $res2 = db_query("SELECT * FROM ".$tblpf."search_index");
-    while($result2 = db_fetch_array($res2)){ 
+    $res2 = db_query("SELECT * FROM ". $tblpf ."search_index");
+    while ($result2 = db_fetch_array($res2)) { 
       // insert into new multisite table 
       db_query("INSERT INTO {multisite_search_index} (word, sid, type, subdmn_id, fromsid, fromtype, fromsubdmn_id, score) VALUES ('%s', %d, '%s', '%s', '%s', %d, '%s', %f)", $result2['word'], $result2['sid'], $result2['type'], $tblpf, $result2['fromsid'], $result2['fromtype'], $tblpf, $result2['score']);
     }
     // ??????  how to proceed with this in a better way 
     // insert into search total -- need to have done without cron job 
     $res3 = db_query("SELECT DISTINCT (word) FROM {multisite_search_index}");
-    while($result3 = db_fetch_array($res3)){ 
+    while ($result3 = db_fetch_array($res3)) { 
       // for each word update search total
       $word = $result3['word'];
       $total = db_result(db_query("SELECT SUM(score) FROM {multisite_search_index} WHERE word = '%s'", $word));
       // Apply Zipf's law to equalize the probability distribution
       $total = log10(1 + 1/(max(1, $total)));
       db_query("UPDATE {multisite_search_total} SET count = %f WHERE word = '%s'", $total, $word);
-              if (!db_affected_rows()) {
-                db_query("INSERT INTO {multisite_search_total} (word, count) VALUES ('%s', %f)", $word, $total);
-              }
+      if (!db_affected_rows()) {
+        db_query("INSERT INTO {multisite_search_total} (word, count) VALUES ('%s', %f)", $word, $total);
+      }
     }
   }   
 }
@@ -340,14 +333,13 @@ function multisite_search_cron() {
 * Implementation of hook_search().
 */
 function multisite_search_search($op = 'search', $keys = NULL) {
-  
   switch ($op) {  
     case 'name':
       return t('All Sites'); // Used on search tab. 
     case 'reset':
-    return;
+      return;
     case 'search': 
-    // Search the index for the keywords that were entered.
+      // Search the index for the keywords that were entered.
       // Build matching conditions
       list($join1, $where1) = _db_rewrite_sql();
       $arguments1 = array();
@@ -417,7 +409,7 @@ function multisite_search_search($op = 'search', $keys = NULL) {
       
       // 4.factor 
       if (module_exists('statistics') && variable_get('statistics_count_content_views', 0) &&
-          $weight = (int)variable_get('node_rank_views', 5)) {
+        $weight = (int)variable_get('node_rank_views', 5)) {
         // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
         $scale = variable_get('node_cron_views_scale', 0.0);
         $ranking[] = '%d * (2.0 - 2.0 / (1.0 + nc.totalcount * %f))';
@@ -449,25 +441,27 @@ function multisite_search_search($op = 'search', $keys = NULL) {
         global $user;
 
         // Build the node body. 
-        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format, u.uid, u.name, u.picture, u.data FROM ".$tbl_prefix."node n INNER JOIN {users} u ON u.uid = n.uid INNER JOIN ".$tbl_prefix."node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));
+        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, nt.name as node_type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format, u.uid, u.name, u.picture, u.data FROM ". $tbl_prefix ."node n INNER JOIN {users} u ON u.uid = n.uid INNER JOIN ". $tbl_prefix ."node_revisions r ON r.vid = n.vid INNER JOIN ". $tbl_prefix ."node_type nt ON nt.type = n.type WHERE n.nid= %d", $item->sid));
 
         // Fetch comments for snippet 
         // Fetch terms for snippet
         $extra = array(); 
         // assuming have to show only total comment 
-        $comments = db_result(db_query('SELECT comment_count FROM '.$tbl_prefix.'node_comment_statistics WHERE nid = %d', $node->nid));
+        $comments = db_result(db_query('SELECT comment_count FROM '. $tbl_prefix .'node_comment_statistics WHERE nid = %d', $node->nid));
+        if (!$comments) $comments = 0;
         $extra[] = format_plural($comments, '1 comment', '@count comments');
 
         // attachment module ???
-        if( user_access('access user profiles') ){ 
-          $tuname = "<a href='".$msite_url.url('user/'. $node->uid)."'>".$node->name."</a>";  
-        }else{
+        if (user_access('access user profiles')) { 
+          $tuname = l(t('!name', array('!name' => $node->name)), $msite_url.url('user/' . $node->uid));
+        }
+        else{
           $tuname = $node->name;  
         }
         // check access permission and do accordingly 
         $results[] = array(
-          'link' => ''.$msite_url.url('node/'. $item->sid),
-          'type' => node_get_types('name', $node),
+          'link' => $msite_url.url('node/'. $item->sid),
+          'type' => $node->node_type,
           'title' => $node->title,
           'user' => $tuname,
           'date' => $node->changed,
