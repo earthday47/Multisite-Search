@@ -1,5 +1,11 @@
 <?php 
 // $Id$
+
+/**
+ * @file
+ * Install, update and uninstall functions for the multisite_search module.
+ */
+ 
 /**
  * Implementation of hook_install().
  */
@@ -11,53 +17,130 @@ function multisite_search_install() {
 /**
  * Implementation of hook_schema().
  */
-function multisite_search_schema(){  
+function multisite_search_schema() {  
   $schema['multisite_search_dataset'] = array(
     'fields' => array(
-      'sid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
-      'type'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
-      'data'=>array('type'=>'text','not null' => TRUE,'size'=>'big'),
-      'subdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255)
+      'sid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'type' => 'varchar',
+        'default' => NULL,
+        'length' => 16,
+      ),
+      'data' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+      ),
+      'subdmn_id' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 255,
+      ),
     ),
     'indexes' => array(
-      'sid_type' => array('sid','type','subdmn_id')
+      'sid_type' => array('sid', 'type', 'subdmn_id')
     ),
   );
 
   $schema['multisite_search_index'] = array(
     'fields' => array(
-      'word'=>array('type'=>'varchar','not null' => TRUE,'default'=>'','length'=>50),
-      'sid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
-      'type'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
-      'subdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255),
-      'fromsid'=>array('type'=>'int','unsigned'=>TRUE,'not null' => TRUE,'default'=>0),
-      'fromtype'=>array('type'=>'varchar','default'=>NULL,'length'=>16),
-      'fromsubdmn_id'=>array('type'=>'varchar','not null' => TRUE,'length'=>255),
-      'score'=>array('type'=>'float','default'=>NULL)
+      'word' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'default' => '',
+        'length' => 50,
+      ),
+      'sid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'type' => 'varchar',
+        'default' => NULL,
+        'length' => 16,
+      ),
+      'subdmn_id' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 255,
+      ),
+      'fromsid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'fromtype' => array(
+        'type' => 'varchar',
+        'default' => NULL,
+        'length' => 16,
+      ),
+      'fromsubdmn_id' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 255,
+      ),
+      'score' => array(
+        'type' => 'float',
+        'default' => NULL,
+      ),
     ),
     'indexes' => array(
-      'sid_type' => array('sid','type','subdmn_id'),
-      'from_sid_type' => array('fromsid','fromtype','fromsubdmn_id'),
-      'word' => array('word')
+      'sid_type' => array('sid', 'type', 'subdmn_id'),
+      'from_sid_type' => array('fromsid', 'fromtype', 'fromsubdmn_id'),
+      'word' => array('word'),
     ),
   );
 
   $schema['multisite_search_total'] = array(
     'fields' => array(
-      'word'=>array('type'=>'varchar','not null' => TRUE,'default'=>'','length'=>50),
-      'count'=>array('type'=>'float','default'=>NULL)
+      'word' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'default' => '',
+        'length' => 50,
+      ),
+      'count' => array(
+        'type' => 'float',
+        'default' => NULL,
+      ),
     ),
-      'primary key' => array('word'),
+    'primary key' => array('word'),
   );
+
   // store multisite information 
   $schema['multisite_search_sites'] = array(
     'fields' => array(
-      'site_id'=>array('type'=>'serial','unsigned'=>TRUE,'not null'=>TRUE,'length'=>11),
-      'table_prefix'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225),
-      'site_url'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225),
-      'site_name'=>array('type'=>'varchar','not null'=>TRUE,'length'=>225)
+      'site_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'length' => 11,
+      ),
+      'table_prefix' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 225,
+      ),
+      'site_url' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 225,
+      ),
+      'site_name' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 225,
+      )
     ),
-      'primary key'=>array('site_id'),
+    'primary key' => array('site_id'),
   );
 
   return $schema;
