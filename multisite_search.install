@@ -1,149 +1,10 @@
-<?php 
-// $Id$
-
-/**
- * @file
- * Install, update and uninstall functions for the multisite_search module.
- */
- 
+<?php
 /**
  * Implementation of hook_install().
  */
 function multisite_search_install() {
-  // Create tables. Will produce error if table sharing is configured
-  drupal_install_schema('multisite_search');
-}
-
-/**
- * Implementation of hook_schema().
- */
-function multisite_search_schema() {  
-  $schema['multisite_search_dataset'] = array(
-    'fields' => array(
-      'sid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'type' => array(
-        'type' => 'varchar',
-        'default' => NULL,
-        'length' => 16,
-      ),
-      'data' => array(
-        'type' => 'text',
-        'not null' => TRUE,
-        'size' => 'big',
-      ),
-      'subdmn_id' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'length' => 255,
-      ),
-    ),
-    'indexes' => array(
-      'sid_type' => array('sid', 'type', 'subdmn_id')
-    ),
-  );
-
-  $schema['multisite_search_index'] = array(
-    'fields' => array(
-      'word' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'default' => '',
-        'length' => 50,
-      ),
-      'sid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'type' => array(
-        'type' => 'varchar',
-        'default' => NULL,
-        'length' => 16,
-      ),
-      'subdmn_id' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'length' => 255,
-      ),
-      'fromsid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'fromtype' => array(
-        'type' => 'varchar',
-        'default' => NULL,
-        'length' => 16,
-      ),
-      'fromsubdmn_id' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'length' => 255,
-      ),
-      'score' => array(
-        'type' => 'float',
-        'default' => NULL,
-      ),
-    ),
-    'indexes' => array(
-      'sid_type' => array('sid', 'type', 'subdmn_id'),
-      'from_sid_type' => array('fromsid', 'fromtype', 'fromsubdmn_id'),
-      'word' => array('word'),
-    ),
-  );
-
-  $schema['multisite_search_total'] = array(
-    'fields' => array(
-      'word' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'default' => '',
-        'length' => 50,
-      ),
-      'count' => array(
-        'type' => 'float',
-        'default' => NULL,
-      ),
-    ),
-    'primary key' => array('word'),
-  );
-
-  // store multisite information 
-  $schema['multisite_search_sites'] = array(
-    'fields' => array(
-      'site_id' => array(
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'length' => 11,
-      ),
-      'table_prefix' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'length' => 225,
-      ),
-      'site_url' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'length' => 225,
-      ),
-      'site_name' => array(
-        'type' => 'varchar',
-        'not null' => TRUE,
-        'length' => 225,
-      )
-    ),
-    'primary key' => array('site_id'),
-  );
-
-  return $schema;
+	// Create tables. Will produce error if table sharing is configured
+	drupal_install_schema('multisite_search');
 }
 
 /**
@@ -157,4 +18,156 @@ function multisite_search_uninstall() {
   db_query('DROP TABLE IF EXISTS {multisite_search_index}');
   db_query('DROP TABLE IF EXISTS {multisite_search_total}');
   db_query('DROP TABLE IF EXISTS {multisite_search_sites}');
+}
+
+/**
+ * Implementation of hook_update_N()
+ */
+/*function multisite_search_update_6200() {
+}*/
+
+/**
+ * Implementation of hook_schema().
+ */
+function multisite_search_schema(){  
+  $schema['multisite_search_dataset'] = array(
+    'description' => 'Stores items that will be searched.',
+    'fields' => array(
+      'sid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Search item ID, e.g. node ID for nodes.',
+      ),
+      'type' => array(
+        'type' => 'varchar',
+        'default' => NULL,
+        'length' => 16,
+        'description' => 'Type of item, e.g. node.',
+      ),
+      'data' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'List of space-separated words from the item.',
+      ),
+      'subdmn_id' => array(
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 255,
+        'description' => 'The db_prefix of the site.',
+      ),
+    ),
+    'indexes' => array(
+       'sid_type' => array('sid','type','subdmn_id')
+    ),
+  );
+
+  $schema['multisite_search_index'] = array(
+    'description' => 'Stores the search index, associating words, items and scores.',
+    'fields' => array(
+      'word' => array(
+        'type' => 'varchar',
+        'length' => 50,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'The {search_total}.word that is associated with the search item.',
+        ),
+      'sid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {search_dataset}.sid of the searchable item to which the word belongs.',
+       ),
+      'type' => array(
+        'type' => 'varchar',
+        'length' => 16,
+        'not null' => FALSE,
+        'description' => 'The {search_dataset}.type of the searchable item to which the word belongs.',
+       ),
+      'subdmn_id' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'The db_prefix of the site.',
+      ),
+      'fromsid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'fromtype' => array(
+        'type' => 'varchar',
+        'length' => 16,
+        'default' => NULL,
+      ),
+      'fromsubdmn_id' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'score' => array(
+        'type' => 'float',
+        'not null' => FALSE,
+        'description' => 'The numeric score of the word, higher being more important.',
+      ),
+    ),
+    'indexes' => array(
+       'sid_type' => array('sid','type','subdmn_id'),
+       'from_sid_type' => array('fromsid','fromtype','fromsubdmn_id'),
+       'word' => array('word')
+    ),
+  );
+
+  $schema['multisite_search_total'] = array(
+    'description' => 'Stores search totals for words.',
+    'fields' => array(
+      'word' => array(
+        'type' => 'varchar',
+        'length' => 50,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Primary Key: Unique word in the search index.',
+      ),
+      'count' => array(
+        'description' => "The count of the word in the index using Zipf's law to equalize the probability distribution.",
+        'type' => 'float',
+        'not null' => FALSE,
+      ),
+    ),
+      'primary key' => array('word'),
+  );
+  
+  $schema['multisite_search_sites'] = array(
+    'description' => 'Multisite search Drupal sites that are to be indexed.',
+    'fields' => array(
+      'site_id' => array(
+        'type' => 'serial',
+        'length' => 11,
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'table_prefix' => array(
+        'type' => 'varchar',
+        'length' => 225,
+        'not null' => TRUE,
+      ),
+      'site_url' => array(
+        'type' => 'varchar',
+        'length' => 225,
+        'not null' => TRUE,
+      ),
+			'site_name' => array(
+        'type' => 'varchar',
+        'length' => 225,
+        'not null' => TRUE,
+      ),
+    ),
+      'primary key'=>array('site_id'),
+  );
+
+  return $schema;
 }

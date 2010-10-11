@@ -1,4 +1,4 @@
-$Id$
+// $id$
 
 OVERVIEW
 Multisite_search is a module which is useful for searching data from multisites.
@@ -11,7 +11,6 @@ This module depends on the Search module.
 REQUIREMENTS
 This modules assumes the following is true:
 - You have a Multisite Drupal installation
-- You use table prefixing for each site (separate databases are not tested)
 
 INSTALLATION
 1. Disable AND *UNINSTALL* any previous versions of Multisite Search.
@@ -29,13 +28,16 @@ Site 3 - http://site3.com/ - 'site3_'
 If you want Site 1 to be able to search all sites, do the following:
 2. While logged into Site 1, go to Administer -> Site Configuration -> Multisite Configuration.
 3. Add all the sites to the table using the form.
-4. Run cron to index all the pages.
+
+Note: You can configure cron to run on an interval. Access
+Administer -> Site Configuration -> Multisite Configuration -> Multisite Cron Configuration
+to set the "TTL" property. (thanks to -enzo-. http://drupal.org/node/886662)
 
 You can search all sites from the generated block or from the 'All Sites' tab on the Search results page.
 
 If you want all the sites to have Multisite Search, you must repeat steps 2-4 for each site.
 
-ADVANCED CONFIGURATION
+ADVANCED CONFIGURATION - SHARE TABLES
 Since doing the above for all sites is a major pain, you can also share the Multisite Search tables
 and only need to do steps 2-4 once.
 
@@ -43,13 +45,12 @@ If you have shared tabled with the prefix 'shared_', you would add this to your 
 $db_prefix = array(
 /* ..snip.. */
   'multisite_search_dataset' => 'shared_',
-  'multisite_search_index'   => 'shared_',
-  'multisite_search_sites'   => 'shared_',
-  'multisite_search_total'   => 'shared_',
+	'multisite_search_index'   => 'shared_',
+	'multisite_search_sites'   => 'shared_',
+	'multisite_search_total'   => 'shared_',
 );
 
 If you are sharing tables in a separate database, use . (period) instead of _ (underscore).
 
 Note: When you enable Multisite Search on multiple sites after doing this, you will get DB errors.
-This is normal and nothing is wrong.
-
+BUT nothing is wrong.
