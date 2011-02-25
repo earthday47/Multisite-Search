@@ -1,4 +1,3 @@
-; $Id$
 
 name = "Multisite Search"
 description = "Enables searching across multiple sites of a Multisite installation."

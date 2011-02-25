@@ -1,4 +1,3 @@
-// $id$
 
 OVERVIEW
 Multisite_search is a module which is useful for searching data from multisites.
