@@ -20,8 +20,13 @@ function multisite_search_help($path,$arg) {
 /**
  * Implementation of hook_theme().
  */
-function multisite_search_theme(){
+function multisite_search_theme() {
   return array(
+    'multisite_search_overview_form' => array(
+      'arguments' => array(
+        'form' => NULL
+      ),
+    ),
     'multisite_search_theme_form' => array(
       'arguments' => array(
         'form' => NULL
@@ -92,24 +97,103 @@ function multisite_search_menu() {
  */
 function multisite_search_overview_form($form_state) {
 
-  $total = db_result(db_query("SELECT COUNT(site_id) FROM {multisite_search_sites}"));
+  $num_sites = db_result(db_query("SELECT COUNT(site_id) FROM {multisite_search_sites}"));
   
   $form = array(
     '#tree' => TRUE,
   );
 
-  // get existing sub-sites
-  $query = db_query("SELECT site_id, table_prefix, site_url, site_name FROM {multisite_search_sites}");  
+  // get existing sub-sites and format the way theme_table likes
+  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites}");  
   while($site = db_fetch_array($query)) {
-    dpm($site);
-    $table_data = array(
-      'title' => array('#value' => t($site['site_name'])),
+    //dpm($site);
+    $siteid = 'site:' . $site['site_id'];
+    $form[$siteid]['title'] = array(
+      '#value' => check_plain($site['site_name']),
     );
-    $form['site:' . $site['site_id']] = $table_data;
+    $form[$siteid]['url'] = array(
+      '#value' => check_plain($site['site_url']),
+    );
+    $form[$siteid]['prefix'] = array(
+      '#value' => check_plain($site['table_prefix']),
+    );
+    $form[$siteid]['weight'] = array(
+      '#type' => 'weight',
+      '#delta' => $num_sites,
+      '#default_value' => $site['weight'],
+    );
+    $form[$siteid]['siteid'] = array(
+      '#type' => 'hidden',
+      '#value' => $site['site_id'],
+    );
+    $form[$siteid]['operations']['edit'] = array(
+      '#value' => l('edit', 'admin/settings/multisite-search/site/' . $site['site_id'] . '/edit'),
+    );
+    $form[$siteid]['operations']['delete'] = array(
+      '#value' => l('delete', 'admin/settings/multisite-search/site/' . $site['site_id'] . '/delete'),
+    );
+    $form[$siteid]['#attributes'] = array(
+      'class' => 'multisite-search-site'
+    );
   }
-
-  dpm($form);
+  //dpm($form);
   return $form;
+}
+
+/**
+ * Theme the multisite search overview form into a table.
+ *
+ * @ingroup themeable
+ */
+function theme_multisite_search_overview_form($form) {
+  drupal_add_tabledrag('multisite-search-overview', 'order', 'sibling', 'multisite-search-weight');
+
+  $header = array(
+    t('Site Name'),
+    t('Site URL'),
+    t('Table Prefix'),
+    t('Weight'),
+    array('data' => t('Operations'), 'colspan' => '2'),
+  );
+
+  $rows = array();
+  foreach (element_children($form) as $siteid) {
+    // strict compare checks that the value is 0 and not NULL; that is, the string is at the beginning
+    if (strpos($siteid, 'site:') === 0) {
+      $element = &$form[$siteid];
+      dsm($element);
+      // Build a list of operations.
+      $operations = array();
+      foreach (element_children($element['operations']) as $op) {
+        $operations[] = drupal_render($element['operations'][$op]);
+      }
+      while (count($operations) < 2) {
+        $operations[] = '';
+      }
+
+      // Add special classes to be used for tabledrag.js.
+      $element['siteid']['#attributes']['class'] = 'multisite-search-siteid';
+      $element['weight']['#attributes']['class'] = 'multisite-search-weight';
+
+      $row = array();
+      $row[] = drupal_render($element['title']);
+      $row[] = drupal_render($element['url']);
+      $row[] = drupal_render($element['prefix']);
+      $row[] = drupal_render($element['weight']) . drupal_render($element['siteid']);
+      $row = array_merge($row, $operations);
+
+      $row = array_merge(array('data' => $row), $element['#attributes']);
+      $row['class'] = !empty($row['class']) ? $row['class'] .' draggable' : 'draggable';
+      $rows[] = $row;
+    }
+  }
+  dsm($rows);
+  $output = '';
+  if ($rows) {
+    $output .= theme('table', $header, $rows, array('id' => 'multisite-search-overview'));
+  }
+  $output .= drupal_render($form);
+  return $output;
 }
 
 /**
