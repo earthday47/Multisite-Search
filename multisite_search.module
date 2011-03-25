@@ -56,15 +56,17 @@ function multisite_search_menu() {
   $items['admin/settings/multisite-search'] = array(
     'title' => 'Multisite Configuration',
     'description' => 'Configure sites to be indexed in a Multisite installation environment.',
-    'page callback' => 'add_multisite_for_multisite_search',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('multisite_search_overview_form'),
     'access callback' => 'user_access',
     'access arguments' => array('administer multisite search'),
     'type' => MENU_NORMAL_ITEM,
   );
-  $items['admin/settings/multisite-search/general'] = array(
+  $items['admin/settings/multisite-search/sites'] = array(
     'title' => 'Multisite Configuration',
     'description' => 'Configure sites to be indexed in a Multisite installation environment.',
-    'page callback' => 'add_multisite_for_multisite_search',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('multisite_search_overview_form'),
     'access callback' => 'user_access',
     'access arguments' => array('administer multisite search'),
     'type' => MENU_LOCAL_TASK,
@@ -83,6 +85,31 @@ function multisite_search_menu() {
     'weight' => 1,
   );
   return $items;	
+}
+
+/**
+ * Menu callback; shows Multisites in a draggable table
+ */
+function multisite_search_overview_form($form_state) {
+
+  $total = db_result(db_query("SELECT COUNT(site_id) FROM {multisite_search_sites}"));
+  
+  $form = array(
+    '#tree' => TRUE,
+  );
+
+  // get existing sub-sites
+  $query = db_query("SELECT site_id, table_prefix, site_url, site_name FROM {multisite_search_sites}");  
+  while($site = db_fetch_array($query)) {
+    dpm($site);
+    $table_data = array(
+      'title' => array('#value' => t($site['site_name'])),
+    );
+    $form['site:' . $site['site_id']] = $table_data;
+  }
+
+  dpm($form);
+  return $form;
 }
 
 /**
@@ -158,7 +185,7 @@ function add_multisite_for_multisite_search() {
   $total  = db_result(db_query("SELECT COUNT(*) FROM {multisite_search_sites} ORDER BY site_id"));
   
   $header = array("Site id", "Table prefix", "Site URL", "Site Name", "Operations");
-  $rows = array(); 
+  $rows = array();
   if($total == 0) {
   	$rows[] = array('data' => array(array('data' => 'No site found', 'colspan' => 5, 'align' => 'center')));
   }

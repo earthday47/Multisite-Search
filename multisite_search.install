@@ -165,9 +165,31 @@ function multisite_search_schema(){
         'length' => 225,
         'not null' => TRUE,
       ),
+      'weight' => array(
+        'description' => 'Weight of site in overview table.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
     ),
-      'primary key'=>array('site_id'),
+    'primary key' => array('site_id'),
   );
 
   return $schema;
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ * Add a "weight" field to the multisite_search_sites table.
+ */
+function multisite_search_update_6201(&$sandbox) {
+  $ret = array();
+  db_add_field($ret, 'multisite_search_sites', 'weight', array(
+    'description' => 'Weight of site in overview table.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+  return $ret;
 }
