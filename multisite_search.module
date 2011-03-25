@@ -104,7 +104,7 @@ function multisite_search_overview_form($form_state) {
   );
 
   // get existing sub-sites and format the way theme_table likes
-  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites}");  
+  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} ORDER BY weight");
   while($site = db_fetch_array($query)) {
     //dpm($site);
     $siteid = 'site:' . $site['site_id'];
@@ -136,8 +136,42 @@ function multisite_search_overview_form($form_state) {
       'class' => 'multisite-search-site'
     );
   }
+  if (element_children($form)) {
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save configuration'),
+    );
+  }
+  else {
+    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/site/' . $site['site_id'] . '/add'));
+  }
+
   //dpm($form);
   return $form;
+}
+
+/**
+ * Submit handler for the multisite search overview form.
+ *
+ * @see multisite_search_overview_form()
+ */
+function multisite_search_overview_form_submit($form, &$form_state) {
+  $updated_items = array();
+  foreach (element_children($form) as $siteid) {
+    // strict compare checks that the value is 0 and not NULL; that is, the string is at the beginning
+    if (strpos($siteid, 'site:') === 0) {
+      $element = $form[$siteid];
+      // if the "weight" value is different from the default, queue it for updating
+      if ($element['weight']['#value'] != $element['weight']['#default_value']) {
+        $updated_items[] = $element;
+      }
+    }
+  }
+  // Save all our changed items to the database.
+  foreach ($updated_items as $item) {
+    // @TODO: Abstract this into a function
+    db_query('UPDATE {multisite_search_sites} SET weight = %s WHERE site_id = %s', array($item['weight']['#value'], $item['siteid']['#value']));
+  }
 }
 
 /**
@@ -161,7 +195,7 @@ function theme_multisite_search_overview_form($form) {
     // strict compare checks that the value is 0 and not NULL; that is, the string is at the beginning
     if (strpos($siteid, 'site:') === 0) {
       $element = &$form[$siteid];
-      dsm($element);
+      //dsm($element);
       // Build a list of operations.
       $operations = array();
       foreach (element_children($element['operations']) as $op) {
@@ -187,7 +221,7 @@ function theme_multisite_search_overview_form($form) {
       $rows[] = $row;
     }
   }
-  dsm($rows);
+  //dsm($rows);
   $output = '';
   if ($rows) {
     $output .= theme('table', $header, $rows, array('id' => 'multisite-search-overview'));
