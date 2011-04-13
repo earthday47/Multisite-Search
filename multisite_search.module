@@ -68,17 +68,29 @@ function multisite_search_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
   $items['admin/settings/multisite-search/sites'] = array(
-    'title' => 'Multisite Configuration',
-    'description' => 'Configure sites to be indexed in a Multisite installation environment.',
+    'title' => 'List Sites',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['admin/settings/multisite-search/add-site'] = array(
+    'title' => 'Add Site',
+    'description' => 'Add a site to be configured in a Multisite installation environment.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('multisite_search_overview_form'),
+    'page arguments' => array('multisite_search_form_add_site'),
     'access callback' => 'user_access',
     'access arguments' => array('administer multisite search'),
     'type' => MENU_LOCAL_TASK,
-    'weight' => 0,
+    'weight' => -9,
+  );
+  $items['admin/settings/multisite-search/sites/%/delete'] = array(
+    'title' => 'Delete Site',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('multisite_search_site_confirm_delete', 4),
+    'access arguments' => array('administer multisite search'),
+    'type' => MENU_CALLBACK,
   );
   $items['admin/settings/multisite-search/cron'] = array(
-    'title' => 'Multisite Cron Configuration',
+    'title' => 'Configure Cron',
     'description' => 'Manage cron execution for multisite indexing process',
     'position' => 'left',
     'weight' => -10,
@@ -127,10 +139,10 @@ function multisite_search_overview_form($form_state) {
       '#value' => $site['site_id'],
     );
     $form[$siteid]['operations']['edit'] = array(
-      '#value' => l('edit', 'admin/settings/multisite-search/site/' . $site['site_id'] . '/edit'),
+      '#value' => l('edit', 'admin/settings/multisite-search/sites/' . $site['site_id'] . '/edit'),
     );
     $form[$siteid]['operations']['delete'] = array(
-      '#value' => l('delete', 'admin/settings/multisite-search/site/' . $site['site_id'] . '/delete'),
+      '#value' => l('delete', 'admin/settings/multisite-search/sites/' . $site['site_id'] . '/delete'),
     );
     $form[$siteid]['#attributes'] = array(
       'class' => 'multisite-search-site'
@@ -143,7 +155,7 @@ function multisite_search_overview_form($form_state) {
     );
   }
   else {
-    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/site/' . $site['site_id'] . '/add'));
+    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/sites/add'));
   }
 
   //dpm($form);
@@ -231,6 +243,92 @@ function theme_multisite_search_overview_form($form) {
 }
 
 /**
+ * Menu callback for multisite-search/add-site
+ */
+function multisite_search_form_add_site() {
+  $form = array();
+  
+  $form['site_name'] = array(
+    '#title' => t('Site name'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#default_value' => '',
+    '#description' => t('Displayed on the search results page.'),
+  );
+  $form['site_url'] = array(
+    '#title' => t('Site URL'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#default_value' => '',
+    '#description' => t('The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>'),
+  );
+  $form['table_prefix'] = array(
+    '#title' => t('Site table prefix'),
+    '#type' => 'textfield',
+    '#size' => 25,
+    '#required' => TRUE,
+    '#default_value' => '',
+    '#description' => t('If the site has a separate database with no table prefix, enter <em>dbname.</em>, including the period.<br />If this site has a table prefix, enter <em>dbname.tbl_prefix_</em> (database name *period* table prefix).'),
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+  
+  return $form;
+}
+
+function multisite_search_form_add_site_submit($form, &$form_state) {
+  // save site
+  drupal_write_record('multisite_search_sites', $form_state['values']);
+  drupal_set_message(t('Site %site has been added.', array('%site' => $form_state['values']['site_name'])));
+  // redirect to List Sites page
+  $form_state['redirect'] = 'admin/settings/multisite-search';  
+}
+
+/**
+ * Page to edit a site.
+ */
+function multisite_search_site_edit($site_id = NULL) {
+  if ((isset($_POST['op']) && $_POST['op'] == t('Delete')) || isset($_POST['confirm'])) {
+    return drupal_get_form('taxonomy_vocabulary_confirm_delete', $vocabulary->vid);
+  }
+  return drupal_get_form('taxonomy_form_vocabulary', (array)$vocabulary);
+}
+
+/**
+ * Form builder for the site delete form.
+ *
+ * @ingroup forms
+ * @see multisite_search_site_confirm_delete_submit()
+ */
+function multisite_search_site_confirm_delete(&$form_state, $site_id) {
+  $site = _multisite_search_get_site($site_id);
+  
+  $form['site_id'] = array(
+    '#type' => 'value',
+    '#value' => $site_id,
+  );
+  return confirm_form($form,
+    t('Are you sure you want to delete %title from the Multisite configuration?', array('%title' => $site['site_name'])),
+    'admin/settings/multisite-search',
+    t('Deleting a site will remove all content from the search index. This action cannot be undone.'),
+    t('Delete'),
+    t('Cancel'));
+}
+
+/**
+ * Submit handler to delete a site after confirmation.
+ *
+ * @see multisite_search_site_confirm_delete()
+ */
+function multisite_search_site_confirm_delete_submit($form, &$form_state) {
+  $site = _multisite_search_get_site($form_state['values']['site_id']);
+  _multisite_search_delete_site($site);
+  drupal_set_message(t('Site %site deleted from Multisite configuration.', array('%site' => $site['site_name'])));
+  $form_state['redirect'] = 'admin/settings/multisite-search';
+  return;
+}
+
+
+/**
  * Form builder. Configure Cron
  *
  * @ingroup forms
@@ -247,111 +345,6 @@ function multisite_search_cron_settings() {
   return system_settings_form($form);
 }
 
-/**
- * Menu callback -- ask for confirmation of node deletion
- */
-function multisite_for_multisite_search_delete_confirm(&$form_state, $siteid) {
-  $form['site_id'] = array(
-    '#type' => 'value',
-    '#value' => $siteid,
-  );
-  return confirm_form($form, t('Are you sure you want to delete sub site id ' . $siteid), $_GET['destination'] ? $_GET['destination'] : 'admin/settings/multisite-search', t('This action cannot be undone.'), t('Delete'), t('Cancel'));
-}
-
-function multisite_for_multisite_search_delete_confirm_submit($form, &$form_state) {
-  if ($form_state['values']['confirm']) {
-    multisite_for_multisite_search_delete_site($form_state['values']['site_id']);
-  }
-  $form_state['redirect'] = 'admin/settings/multisite-search';
-}
-
-function multisite_for_multisite_search_delete_site($site_id) {
-  /**
-   * Given the site id, retrieve the subdmn_id, and delete from the 
-   * 3 tables where that content appears.
-   */
-  $subdmn_id = _get_subdmn_id($site_id);
-  db_query("DELETE FROM {multisite_search_sites} WHERE site_id = %d", $site_id);
-  db_query("DELETE FROM {multisite_search_dataset} WHERE subdmn_id = '%s'", $subdmn_id);
-  db_query("DELETE FROM {multisite_search_index} WHERE subdmn_id = '%s'", $subdmn_id);
-  drupal_set_message(t("Sub-site deleted successfully."));
-}
-
-/**
- * _get_subdmn_id()
- * Internal - retrieve subdmn_id when given the site_id (primary key)
- */
-function _get_subdmn_id($site_id) {
-  $object = db_fetch_object(db_query("SELECT table_prefix FROM {multisite_search_sites} WHERE site_id = %d", $site_id));
-  return $object->table_prefix;
-}
-
-/**
- * add_multisite_for_multisite_search()
- * Page callback for admin/settings/multisite-search
- */
-function add_multisite_for_multisite_search() {
-  if (arg(4) == 'delete') { 
-    return drupal_get_form('multisite_for_multisite_search_delete_confirm', arg(3));
-  }
-  
-  $output = "";
-  /**
-   * Build formatted table of all existing sub-sites.
-   */
-  $sql = db_query("SELECT * FROM {multisite_search_sites} ORDER BY site_id");
-  $total  = db_result(db_query("SELECT COUNT(*) FROM {multisite_search_sites} ORDER BY site_id"));
-  
-  $header = array("Site id", "Table prefix", "Site URL", "Site Name", "Operations");
-  $rows = array();
-  if($total == 0) {
-  	$rows[] = array('data' => array(array('data' => 'No site found', 'colspan' => 5, 'align' => 'center')));
-  }
-  while($res = db_fetch_array($sql)){
-    $rows[] = array($res['site_id'], $res['table_prefix'], $res['site_url'], $res['site_name'], l("delete", 'admin/settings/multisite-search/' . $res['site_id'] . '/delete'));	
-  }
-  $output .= theme('table', $header, $rows);
-  $output .= "<br /><h2>Add New Sub-Site</h2>";
-  $output .= "<p>" . t('When using table prefixing, enter a value like "tableprefix_" . When using separate databases, enter a value like "dbname." (no quotes, dot inclusive).') . "</p>";
-  $output .= drupal_get_form("add_multisite_for_multisite_search_form");
-  return $output;	
-}
-
-/**
- * Builds form for admin/settings/multisite-search page.
- */
-function add_multisite_for_multisite_search_form(){
-  $form = array();
-  $form['table_prefix'] = array(
-    '#title'=> t('Sub-site table prefix'),
-    '#type' => 'textfield',
-    '#required' => TRUE,
-    '#default_value' => '',
-    '#attributes' => array('title' => t('Enter the table prefix of the sub-site.')),
-  );
-  $form['site_url'] = array(
-    '#title'=> t('Sub-site URL'),
-    '#type' => 'textfield',
-    '#required' => TRUE,
-    '#default_value' => '',
-    '#description' => 'The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>',
-    '#attributes' => array('title' => t('Enter the complete sub-site URL')),
-  );
-	$form['site_name'] = array(
-    '#title'=> t('Enter the sub-site name'),
-		'#type' => 'textfield',
-    '#required' => TRUE,
-		'#default_value' => '',
-		'#description' => 'Displayed on the search results page.',
-  );
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
-  return $form;
-}
-function add_multisite_for_multisite_search_form_submit($form, &$form_state) {
-  // save subsite 	
-  db_query("INSERT INTO {multisite_search_sites} VALUES(NULL, '%s', '%s', '%s')", $form_state['values']['table_prefix'], $form_state['values']['site_url'], $form_state['values']['site_name']); 
-  return;
-}
 
 /**
  * Create multisite search engine block 
@@ -716,6 +709,31 @@ function _multisite_search_lookup_path($action, $path = '', $path_language = '',
   $alias = db_result(db_query("SELECT dst FROM " . $prefix . "url_alias WHERE src = '%s' AND language IN('%s', '') ORDER BY language DESC, pid DESC", $path, $path_language));
  
   return $alias;
+}
+
+/**
+ * _multisite_search_get_site()
+ *
+ * Helper function - return site array.
+ */
+function _multisite_search_get_site($site_id) {
+  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} WHERE site_id = %s", $site_id);
+  $site = db_fetch_array($query);
+  return $site;
+}
+
+/**
+ * _multisite_search_delete_site()
+ *
+ * Helper function - delete a site from Multisite Search tables.
+ */
+function _multisite_search_delete_site($site) {
+  $subdmn_id = $site['table_prefix'];
+  // poorly named table column; subdmn_id = table_prefix
+  db_query("DELETE FROM {multisite_search_sites} WHERE site_id = %d", $site['site_id']);
+  db_query("DELETE FROM {multisite_search_dataset} WHERE subdmn_id = '%s'", $subdmn_id);
+  db_query("DELETE FROM {multisite_search_index} WHERE subdmn_id = '%s'", $subdmn_id);
+  return TRUE;
 }
 
 
