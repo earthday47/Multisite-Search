@@ -76,11 +76,18 @@ function multisite_search_menu() {
     'title' => 'Add Site',
     'description' => 'Add a site to be configured in a Multisite installation environment.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('multisite_search_form_add_site'),
+    'page arguments' => array('multisite_search_form_site'),
     'access callback' => 'user_access',
     'access arguments' => array('administer multisite search'),
     'type' => MENU_LOCAL_TASK,
     'weight' => -9,
+  );
+  $items['admin/settings/multisite-search/sites/%/edit'] = array(
+    'title' => 'Edit Site',
+    'page callback' => 'multisite_search_site_edit',
+    'page arguments' => array(4),
+    'access arguments' => array('administer multisite search'),
+    'type' => MENU_CALLBACK,
   );
   $items['admin/settings/multisite-search/sites/%/delete'] = array(
     'title' => 'Delete Site',
@@ -243,23 +250,28 @@ function theme_multisite_search_overview_form($form) {
 }
 
 /**
- * Menu callback for multisite-search/add-site
+ * Menu callback for multisite-search/add-site and multisite-search/sites/%/edit
  */
-function multisite_search_form_add_site() {
-  $form = array();
-  
+function multisite_search_form_site(&$form_state, $site_id = NULL) {
+  if ($site_id) {
+    $edit = _multisite_search_get_site($site_id);
+    $form['site_id'] = array(
+      '#type' => 'value',
+      '#value' => $edit['site_id'],
+    );
+  }
   $form['site_name'] = array(
     '#title' => t('Site name'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => '',
+    '#default_value' => $edit['site_name'],
     '#description' => t('Displayed on the search results page.'),
   );
   $form['site_url'] = array(
     '#title' => t('Site URL'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => '',
+    '#default_value' => $edit['site_name'],
     '#description' => t('The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>'),
   );
   $form['table_prefix'] = array(
@@ -267,18 +279,27 @@ function multisite_search_form_add_site() {
     '#type' => 'textfield',
     '#size' => 25,
     '#required' => TRUE,
-    '#default_value' => '',
+    '#default_value' => $edit['table_prefix'],
     '#description' => t('If the site has a separate database with no table prefix, enter <em>dbname.</em>, including the period.<br />If this site has a table prefix, enter <em>dbname.tbl_prefix_</em> (database name *period* table prefix).'),
   );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+  if ($site_id) {
+    $form['delete'] = array('#type' => 'submit', '#value' => t('Delete'));
+  }
   
   return $form;
 }
 
-function multisite_search_form_add_site_submit($form, &$form_state) {
-  // save site
-  drupal_write_record('multisite_search_sites', $form_state['values']);
-  drupal_set_message(t('Site %site has been added.', array('%site' => $form_state['values']['site_name'])));
+function multisite_search_form_site_submit($form, &$form_state) {
+  if ($form_state['values']['site_id']) {
+    // update existing site
+    drupal_write_record('multisite_search_sites', $form_state['values'], 'site_id');
+    drupal_set_message(t('Site %site has been updated.', array('%site' => $form_state['values']['site_name'])));
+  } else {
+    // save new site
+    drupal_write_record('multisite_search_sites', $form_state['values']);
+    drupal_set_message(t('Site %site has been added.', array('%site' => $form_state['values']['site_name'])));
+  }
   // redirect to List Sites page
   $form_state['redirect'] = 'admin/settings/multisite-search';  
 }
@@ -286,11 +307,11 @@ function multisite_search_form_add_site_submit($form, &$form_state) {
 /**
  * Page to edit a site.
  */
-function multisite_search_site_edit($site_id = NULL) {
+function multisite_search_site_edit($site_id) {
   if ((isset($_POST['op']) && $_POST['op'] == t('Delete')) || isset($_POST['confirm'])) {
-    return drupal_get_form('taxonomy_vocabulary_confirm_delete', $vocabulary->vid);
+    return drupal_get_form('multisite_search_site_confirm_delete', $site_id);
   }
-  return drupal_get_form('taxonomy_form_vocabulary', (array)$vocabulary);
+  return drupal_get_form('multisite_search_form_site', $site_id);
 }
 
 /**
