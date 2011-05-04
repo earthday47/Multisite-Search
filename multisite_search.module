@@ -162,7 +162,7 @@ function multisite_search_overview_form($form_state) {
     );
   }
   else {
-    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/sites/add'));
+    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/add-site'));
   }
 
   //dpm($form);
