@@ -96,13 +96,13 @@ function multisite_search_menu() {
     'access arguments' => array('administer multisite search'),
     'type' => MENU_CALLBACK,
   );
-  $items['admin/settings/multisite-search/cron'] = array(
-    'title' => 'Configure Cron',
-    'description' => 'Manage cron execution for multisite indexing process',
+  $items['admin/settings/multisite-search/settings'] = array(
+    'title' => 'Search settings',
+    'description' => 'Manage settings for Multisite Search module.',
     'position' => 'left',
     'weight' => -10,
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('multisite_search_cron_settings'),        
+    'page arguments' => array('multisite_search_settings'),
     'access callback' => 'user_access',
     'access arguments' => array('administer multisite search'),
     'type' => MENU_LOCAL_TASK,
@@ -350,18 +350,31 @@ function multisite_search_site_confirm_delete_submit($form, &$form_state) {
 
 
 /**
- * Form builder. Configure Cron
+ * Form builder. Multisite Search Settings
  *
  * @ingroup forms
  * @see system_settings_form()
  */
-function multisite_search_cron_settings() {
+function multisite_search_settings() {
   $form['multisite_search_cron_ttl'] = array(
     '#type' => 'textfield',
-    '#title' => t('Cron TTL'),
+    '#title' => t('Refresh Multisite search index (in seconds)'),
     '#required' => TRUE,
-    '#description' => 'Define the limit in seconds of multisite re-indexing process, after NNN configured the multisite search will run a reindex',
-    '#default_value' => variable_get('multisite_search_cron_ttl', '3600')
+    '#description' => t('Configure the refresh rate for the search index. When cron runs, this value will be checked.'),
+    '#default_value' => variable_get('multisite_search_cron_ttl', '3600'),
+  );
+  $form['multisite_search_block_label'] = array(
+	'#type' => 'textfield',
+	'#title' => t('Search block label'),
+	'#description' => t('Set the label to be displayed in the Multisite Search block. Leave blank to display no label.'),
+	'#default_value' => variable_get('multisite_search_block_label', 'Multisite search'),
+  );
+  $form['multisite_search_tab_label'] = array(
+	'#type' => 'textfield',
+	'#title' => t('Search tab label'),
+	'#required' => TRUE,
+	'#description' => t('Set the text for the Multisite Search tab in the search results.'),
+	'#default_value' => variable_get('multisite_search_tab_label', 'Multisite search'),
   );
   return system_settings_form($form);
 }
@@ -481,7 +494,7 @@ function multisite_search_box(&$form_state,$form_id) {
 
   // Use search_keys instead of keys to avoid ID conflicts with the search block.
   $form[$form_id .'_keys'] = array(
-    '#title' => t('Search all sites'),
+    '#title' => t(variable_get('multisite_search_block_label', 'Multisite search')),
     '#type' => 'textfield',
     '#size' => 15,	
     '#default_value' => '',
@@ -551,7 +564,7 @@ function multisite_search_cron() {
 function multisite_search_search($op = 'search', $keys = NULL) {
   switch ($op) {  
     case 'name':
-      return t('All Sites'); // Used on search tab. 
+      return t(variable_get('multisite_search_tab_label', 'Multisite search')); // Used on search tab. 
     case 'reset':
       return;
     case 'search': 
