@@ -162,7 +162,7 @@ function multisite_search_overview_form($form_state) {
     );
   }
   else {
-    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/sites/add'));
+    $form['empty_menu'] = array('#value' => t('There are no sites set up yet. ') . l('Add one now', 'admin/settings/multisite-search/add-site'));
   }
 
   //dpm($form);
@@ -522,7 +522,8 @@ function multisite_search_cron() {
   	// get table prefix 
   	$tblpf = $result['table_prefix'];
   	// Get all values from core search's search_dataset table and insert them into multisite dataset
- 		db_query("INSERT INTO {multisite_search_dataset} SELECT sid, type, data, '" . $tblpf . "' AS subdmn_id FROM " . $tblpf . "search_dataset");
+  	// Also exclude unpublished nodes. TODO: make this better
+ 		db_query("INSERT INTO {multisite_search_dataset} SELECT sid, type, data, '" . $tblpf . "' AS subdmn_id FROM " . $tblpf . "search_dataset WHERE sid NOT IN (SELECT nid from " . $tblpf . "node where status = 0)");
   	// Get all values from core search's search_index table and insert them into multisite index
   	db_query("INSERT INTO {multisite_search_index} (word, sid, type, subdmn_id, score) SELECT word, sid, type, '" . $tblpf . "' as subdmn_id, score FROM " . $tblpf . "search_index");
   }
