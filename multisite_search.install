@@ -3,8 +3,10 @@
  * Implementation of hook_install().
  */
 function multisite_search_install() {
-	// Create tables. Will produce error if table sharing is configured
-	drupal_install_schema('multisite_search');
+	// Create tables, if they don't already exist
+	if (!db_table_exists('multisite_search_dataset')) {
+  	drupal_install_schema('multisite_search');
+  }
 }
 
 /**
