@@ -1,55 +1,119 @@
-
 OVERVIEW
-Multisite_search is a module which is useful for searching data from multisites.
-This is the new 2.x brance of Multisite search. It is not compatible with the previous 
-version of Multisite Search (database table changes).
+Multisite Search allows you to index and search content from all sites in a Multisite configuration.
+If you are looking for more powerful search integration, try the Apache Solr module:
+http://drupal.org/project/apachesolr
 
-DEPENDENCIES
-This module depends on the Search module.
+Thanks to lebachai for permission to share with the community.
+This module was initially developed for Cleveland Public Library, a website based on Drupal.
 
 REQUIREMENTS
 This modules assumes the following is true:
 - You have a Multisite Drupal installation
+- You are sharing tables (or know how)
 
-INSTALLATION
-1. Disable AND *UNINSTALL* any previous versions of Multisite Search.
+MULTISITE CONCEPTS
+Drupal can be configured to run multiple websites from a single code base.
+To read more about multisite configuration, read the resources here: http://drupal.org/node/43816
 
-2. Copy the multisite_search/ folder into the sites/all/modules directory.
+Drupal database tables in a Multisite installation can be in separate databases, or in a single 
+database using table prefixing.
 
-CONFIGURATION
-Let's say we have 3 sites we want to share. They are prefixed like so:
-Site 1 - http://site1.com/ - 'site1_'
-Site 2 - http://site2.com/ - 'site2_'
-Site 3 - http://site3.com/ - 'site3_'
+SHARING MULTISITE SEARCH TABLES
+It is a good idea to share the Multisite Search database tables. More information: http://drupal.org/node/22267
+Edit each settings.php file and make the following edit:
 
-1. Install and enable Search and Multisite Search on all sites.
+Change:
 
-If you want Site 1 to be able to search all sites, do the following:
-2. While logged into Site 1, go to Administer -> Site Configuration -> Multisite Configuration.
-3. Add all the sites to the table using the form.
+$db_prefix = '';
 
-Note: You can configure cron to run on an interval. Access
-Administer -> Site Configuration -> Multisite Configuration -> Multisite Cron Configuration
-to set the "TTL" property. (thanks to -enzo-. http://drupal.org/node/886662)
+To this:
 
-You can search all sites from the generated block or from the 'All Sites' tab on the Search results page.
-
-If you want all the sites to have Multisite Search, you must repeat steps 2-4 for each site.
-
-ADVANCED CONFIGURATION - SHARE TABLES
-Since doing the above for all sites is a major pain, you can also share the Multisite Search tables
-and only need to do steps 2-4 once.
-
-If you have shared tabled with the prefix 'shared_', you would add this to your settings.php file:
 $db_prefix = array(
-/* ..snip.. */
-  'multisite_search_dataset' => 'shared_',
-	'multisite_search_index'   => 'shared_',
-	'multisite_search_sites'   => 'shared_',
-	'multisite_search_total'   => 'shared_',
+  'default' => '',
+  'multisite_search_dataset'  => 'shared_db.',
+	'multisite_search_index'    => 'shared_db.',
+	'multisite_search_sites'    => 'shared_db.',
+	'multisite_search_total'    => 'shared_db.',
+	'multisite_search_settings' => 'shared_db.',
 );
 
-If you are sharing tables in a separate database, use . (period) instead of _ (underscore).
+Where 'shared_db' is the name of your shared database. You can also use table prefixing if you only have one database,
+in which case you would use _ (underscore) instead of . (period);
+More information: http://drupal.org/node/22267
 
-Note: When you enable Multisite Search on multiple sites after doing this, you will get DB errors.
-BUT nothing is wrong.
+
+INSTALLATION INSTRUCTIONS
+
+1. Edit the settings.php file for all sites and share the Multisite Search tables (see above).
+
+2. Copy the multisite_search/ files to sites/all/modules.
+
+3. Enable Search and Multisite Search on all sites. Because of step 1, you will get database errors.
+
+4. Visit Site configuration -> Multisite configuration or admin/settings/multisite-search/sites on
+   any of the sites.
+
+5. Add each site and its information. (See "Table Prefixing" below)
+
+6. Re-build the search index for every site by visiting admin/settings/search on each site and 
+   clicking "Re-index site".
+
+7. Run cron for all sites.
+
+8. If you want to replace core search, disable it at Site Building -> Themes -> Configure -> 
+   Global Settings or admin/build/themes/settings/global. Then visit the Blocks page at 
+   Site building -> Blocks or admin/build/block and move the "Multisite Search Block" to your 
+   favorite region in your theme.
+
+
+TABLE PREFIXING
+The follow are some examples of how to fill out the "Table Prefix" field. It's best to use the 
+database name AND the prefix whenever possible.
+
+Example 1: One database, table prefixing
+
+Site 1 - database.site1_
+Site 2 - database.site2_
+Site 3 - database.site3_
+
+Example 2: separate databases, no prefixing
+
+Site 1 - db1.
+Site 2 - db2.
+Site 3 - db3.
+
+Example 3: mixed
+
+Site 1 - db1.
+Site 2 - db2.site2_
+Site 3 - db3.site3_
+
+
+CONFIGURATION SETTINGS
+Once the sites are set up, visit admin/settings/multisite-search/settings to change settings.
+Note: These settings only need to be changed once.
+
+Refresh Multisite search index (in seconds):
+
+This controls how frequently the search index is rebuilt. The default is 0 seconds, which means that the 
+entire Multisite Search index will be rebuilt on every cron run (for every site). On sites with a lot of 
+content, it is recommended to set this to perhaps daily (86400) or weekly (604800).
+
+Search block label:
+
+This is the text that is displayed on the Multisite Search block.
+
+Search tab label:
+
+This is the text that is displayed on the search results page tab.
+
+Exclude unpublished nodes:
+
+Default is to exclude. Note that core search ignores node access and only checks on node display.
+This has been fixed with some SQL trickery: http://drupal.org/node/1190056
+If, for some reason, you do want to search unpublished nodes, uncheck this box.
+
+Exclude content types:
+
+This is similar to the unpublished issue. Since Multisite Search doesn't have access to the node permissions 
+in the other sites, it doesn't know what to skip. More SQL trickery has been added to work around this.
