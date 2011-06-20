@@ -355,11 +355,12 @@ function multisite_search_site_confirm_delete_submit($form, &$form_state) {
  */
 function multisite_search_settings_form($form_state) {
   $form['multisite_search_cron_ttl'] = array(
+    '#prefix' => t('If Multisite Search tables are shared, these settings will apply for all sites.'),
     '#type' => 'textfield',
     '#title' => t('Refresh Multisite search index (in seconds)'),
     '#required' => TRUE,
-    '#description' => t('Configure the refresh rate for the search index. When cron runs, this value will be checked.'),
-    '#default_value' => _multisite_search_get_setting('multisite_search_cron_ttl', '3600'),
+    '#description' => t('Configure the refresh rate for the search index.<br><em>0</em> means the index is rebuilt every cron run.<br><em>3600</em> means the index is rebuilt every 60 minutes on the next cron run.'),
+    '#default_value' => _multisite_search_get_setting('multisite_search_cron_ttl', '0'),
     '#weight' => -5,
   );
   $form['multisite_search_block_label'] = array(
@@ -390,7 +391,7 @@ function multisite_search_settings_form($form_state) {
   $form['exclusions']['multisite_search_exclude_types'] = array(
     '#type' => 'textarea',
     '#title' => t('Exclude content types'),
-    '#description' => t('Enter the short name, one per line. This has to be the same for all sites.'),
+    '#description' => t('Enter the short name, one per line. This list is shared by all sites.'),
     '#default_value' => _multisite_search_get_setting('multisite_search_exclude_types', ''),
   );
   
@@ -433,6 +434,12 @@ function multisite_search_settings_form_submit($form, $form_state) {
   else {
     drupal_set_message(t('The configuration options have been saved.'));
   }
+  drupal_set_message(
+    t('You should <a href="!search-settings">re-index site content</a> for <em>all</em> sites and then <a href="!run-cron">run cron</a> for your changes take effect.', array(
+      '!search-settings' => url('admin/settings/search'),
+      '!run-cron' => url('admin/reports/status/run-cron')
+    ))
+  );
 
   cache_clear_all();
   drupal_rebuild_theme_registry();
@@ -573,12 +580,12 @@ function multisite_search_box(&$form_state,$form_id) {
  */
 function multisite_search_cron() {
   //Fetch last execution
-  $msearch_last_cron_execution = _multisite_search_get_setting('multisite_search_last_cron_execution', FALSE);
-  //Validate if we are in the umbral to maintain the index search
-  if($msearch_last_cron_execution && time() < ( $msearch_last_cron_execution + _multisite_search_get_setting('multisite_search_cron_ttl', '3600')) ) {
+  $msearch_last_cron_execution = _multisite_search_get_setting('multisite_search_last_cron_execution', '');
+  // Validate if we are in the umbral to maintain the index search
+  if ($msearch_last_cron_execution && time() < ( $msearch_last_cron_execution + _multisite_search_get_setting('multisite_search_cron_ttl', '0')) ) {
     return false;
   } else {
-    variable_set('multisite_search_last_cron_execution', time());
+    _multisite_search_set_setting('multisite_search_last_cron_execution', time());
   }
   // set this module weight to 10
   db_query("UPDATE {system} SET weight = 10 WHERE name = 'multisite_search'");
@@ -587,29 +594,37 @@ function multisite_search_cron() {
   db_query('TRUNCATE TABLE {multisite_search_dataset}');
   db_query('TRUNCATE TABLE {multisite_search_index}');
   db_query('TRUNCATE TABLE {multisite_search_total}');
-   
+  
   // get all sites 
   $res = db_query("SELECT * FROM {multisite_search_sites}");
   while ($result = db_fetch_array($res)) {
     // get table prefix 
     $tblpf = $result['table_prefix'];
 
-     // Get all values from core search's search_dataset table and insert them into multisite dataset    
-     $dataset_query = "INSERT INTO {multisite_search_dataset} SELECT sid, type, data, '" . $tblpf . "' AS subdmn_id FROM " . $tblpf . "search_dataset";
+    // Get all values from core search's search_dataset table and insert them into multisite dataset    
+    $dataset_query = "INSERT INTO {multisite_search_dataset} SELECT sid, type, data, '" . $tblpf . "' AS subdmn_id FROM " . $tblpf . "search_dataset";
     // Get all values from core search's search_index table and insert them into multisite index
-     $index_query = "INSERT INTO {multisite_search_index} (word, sid, type, subdmn_id, score) SELECT word, sid, type, '" . $tblpf . "' as subdmn_id, score FROM " . $tblpf . "search_index";
-     
-     $addn_params = array();
-     // If enabled: exclude unpublished nodes.
-     $addn_params[] = "sid NOT IN (SELECT nid FROM " . $tblpf . "node WHERE status = 0)";
-     // If enabled: exclude specific content types.
-     $addn_params[] = "sid NOT IN (SELECT nid FROM " . $tblpf . "node WHERE type IN ('story'))";
+    $index_query = "INSERT INTO {multisite_search_index} (word, sid, type, subdmn_id, score) SELECT word, sid, type, '" . $tblpf . "' as subdmn_id, score FROM " . $tblpf . "search_index";
+    
+    /* Additional parameters - set in "Search settings" admin page */
+    $addn_params = array();
+    // If enabled: exclude unpublished nodes.
+    if (_multisite_search_get_setting('multisite_search_exclude_unpublished', TRUE)) {
+      $addn_params[] = "sid NOT IN (SELECT nid FROM " . $tblpf . "node WHERE status = 0)";
+    }
+    // If enabled: exclude specific content types.
+    if (_multisite_search_get_setting('multisite_search_exclude_types', ''  )) {
+      $exclude_types = explode("\r\n", _multisite_search_get_setting('multisite_search_exclude_types', ''));
+      $addn_params[] = "sid NOT IN (SELECT nid FROM " . $tblpf . "node WHERE type IN ('" . implode("','",$exclude_types) . "'))";
+    }
+    // add if appropriate
     if ($addn_params) {
       $dataset_query .= ' WHERE ' . implode(' AND ', $addn_params);
       $index_query .= ' WHERE ' . implode(' AND ', $addn_params);
     }
-     
-     db_query($dataset_query);
+    
+    watchdog('multisite_search', $index_query);
+    db_query($dataset_query);
     db_query($index_query);
   }
   /**
