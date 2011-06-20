@@ -18,6 +18,9 @@ function multisite_search_uninstall() {
   db_query('DROP TABLE IF EXISTS {multisite_search_index}');
   db_query('DROP TABLE IF EXISTS {multisite_search_total}');
   db_query('DROP TABLE IF EXISTS {multisite_search_sites}');
+  
+  // Delete variables.
+  /* ... */
 }
 
 /**
