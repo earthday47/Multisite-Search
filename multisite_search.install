@@ -175,6 +175,26 @@ function multisite_search_schema(){
     'primary key' => array('site_id'),
   );
 
+  $schema['multisite_search_settings'] = array(
+    'description' => 'Shared Multisite Search settings, that can\'t go in the variables table.',
+    'fields' => array(
+      'name' => array(
+        'description' => 'The name of the variable.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'value' => array(
+        'description' => 'The value of the variable.',
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big'
+      ),
+    ),
+    'primary key' => array('name'),
+  );
+
   return $schema;
 }
 
@@ -183,13 +203,40 @@ function multisite_search_schema(){
  *
  * Add a "weight" field to the multisite_search_sites table.
  */
-function multisite_search_update_6201(&$sandbox) {
+function multisite_search_update_6200(&$sandbox) {
   $ret = array();
   db_add_field($ret, 'multisite_search_sites', 'weight', array(
     'description' => 'Weight of site in overview table.',
     'type' => 'int',
     'not null' => TRUE,
     'default' => 0,
+  ));
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ * Add the multisite_search_settings table.
+ */
+function multisite_search_update_6210(&$sandbox) {
+  db_create_table($ret, 'multisite_search_settings', array(
+    'description' => 'Shared Multisite Search settings, that can\'t go in the variables table.',
+    'fields' => array(
+      'name' => array(
+        'description' => 'The name of the variable.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'value' => array(
+        'description' => 'The value of the variable.',
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big'
+      ),
+    ),
+    'primary key' => array('name'),
   ));
   return $ret;
 }
