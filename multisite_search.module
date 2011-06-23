@@ -271,7 +271,7 @@ function multisite_search_form_site(&$form_state, $site_id = NULL) {
     '#title' => t('Site URL'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => $edit['site_name'],
+    '#default_value' => $edit['site_url'],
     '#description' => t('The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>'),
   );
   $form['table_prefix'] = array(
