@@ -121,40 +121,40 @@ function multisite_search_menu() {
  */
 function multisite_search_overview_form($form_state) {
 
-  $num_sites = db_result(db_query("SELECT COUNT(site_id) FROM {multisite_search_sites}"));
+  $num_sites = db_query("SELECT COUNT(site_id) FROM {multisite_search_sites}")->fetchField();
   
   $form = array(
     '#tree' => TRUE,
   );
 
   // get existing sub-sites and format the way theme_table likes
-  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} ORDER BY weight");
-  while($site = db_fetch_array($query)) {
-    //dpm($site);
-    $siteid = 'site:' . $site['site_id'];
+  $result = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} ORDER BY weight");
+  foreach ($result as $site) {
+    print_r($site);
+    $siteid = 'site:' . $site->site_id;
     $form[$siteid]['title'] = array(
-      '#value' => check_plain($site['site_name']),
+      '#value' => check_plain($site->site_name),
     );
     $form[$siteid]['url'] = array(
-      '#value' => check_plain($site['site_url']),
+      '#value' => check_plain($site->site_url),
     );
     $form[$siteid]['prefix'] = array(
-      '#value' => check_plain($site['table_prefix']),
+      '#value' => check_plain($site->table_prefix),
     );
     $form[$siteid]['weight'] = array(
       '#type' => 'weight',
       '#delta' => $num_sites,
-      '#default_value' => $site['weight'],
+      '#default_value' => $site->weight,
     );
     $form[$siteid]['siteid'] = array(
       '#type' => 'hidden',
-      '#value' => $site['site_id'],
+      '#value' => $site->site_id,
     );
     $form[$siteid]['operations']['edit'] = array(
-      '#value' => l('edit', 'admin/settings/multisite-search/sites/' . $site['site_id'] . '/edit'),
+      '#value' => l('edit', 'admin/settings/multisite-search/sites/' . $site->site_id . '/edit'),
     );
     $form[$siteid]['operations']['delete'] = array(
-      '#value' => l('delete', 'admin/settings/multisite-search/sites/' . $site['site_id'] . '/delete'),
+      '#value' => l('delete', 'admin/settings/multisite-search/sites/' . $site->site_id . '/delete'),
     );
     $form[$siteid]['#attributes'] = array(
       'class' => 'multisite-search-site'
@@ -496,7 +496,6 @@ function multisite_search_block_view($delta = '') {
         $block['content'] = drupal_get_form('multisite_search_block_form');
       }
       break;
-    }
   }
   return $block;
 } 
@@ -640,7 +639,7 @@ function multisite_search_cron() {
   while($result3 = db_fetch_array($res3)){ 
     // for each word update search total
     $word = $result3['word'];
-    $total = db_result(db_query("SELECT SUM(score) FROM {multisite_search_index} WHERE word = '%s'", $word));
+    $total = db_query("SELECT SUM(score) FROM {multisite_search_index} WHERE word = '%s'", $word)->fetchField();
     // Apply Zipf's law to equalize the probability distribution
     $total = log10(1 + 1/(max(1, $total)));
     /* no need to "update" any rows since we truncated above */
@@ -766,7 +765,7 @@ function multisite_search_search($op = 'search', $keys = NULL) {
         // Fetch terms for snippet
         $extra = array(); 
         // assuming have to show only total comment 
-        $comments = db_result(db_query('SELECT comment_count FROM '.$tbl_prefix.'node_comment_statistics WHERE nid = %d', $node->nid));
+        $comments = db_query('SELECT comment_count FROM '.$tbl_prefix.'node_comment_statistics WHERE nid = %d', $node->nid)->fetchField();
         $extra[] = format_plural($comments, '1 comment', '@count comments');
 
         /**
@@ -888,7 +887,7 @@ function do_multisite_search($keywords, $type, $join1 = '', $where1 = '1', $argu
   $result = db_query_temporary("SELECT i.type, i.sid, i.subdmn_id, SUM(i.score * t.count) AS relevance, COUNT(*) AS matches FROM {multisite_search_index} i INNER JOIN {multisite_search_total} t ON i.word = t.word $join1 WHERE $conditions GROUP BY i.subdmn_id, i.type, i.sid HAVING COUNT(*) >= %d", $arguments, 'temp_search_sids');
 
   // Calculate maximum relevance, to normalize it
-  $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_search_sids'));
+  $normalize = db_query('SELECT MAX(relevance) FROM temp_search_sids')->fetchField();
   if (!$normalize) {
     return array();
   }
@@ -898,7 +897,7 @@ function do_multisite_search($keywords, $type, $join1 = '', $where1 = '1', $argu
   $conditions = '('. $query[0] .')';
   $arguments = array_merge($arguments2, $query[1]);
   $result = db_query_temporary("SELECT i.type, i.sid, i.subdmn_id, $select2 FROM temp_search_sids i INNER JOIN {multisite_search_dataset} d ON i.sid = d.sid AND i.type = d.type AND i.subdmn_id = d.subdmn_id $join2 WHERE $conditions $sort_parameters", $arguments, 'temp_search_results');
-  if (($count = db_result(db_query('SELECT COUNT(*) FROM temp_search_results'))) == 0) {
+  if (($count = db_query('SELECT COUNT(*) FROM temp_search_results')->fetchField()) == 0) {
     return array();
   }
   $count_query = "SELECT $count";
@@ -940,7 +939,7 @@ function _multisite_search_lookup_path($action, $path = '', $path_language = '',
     return $map[$path_language][$path];
   }
   // Get the most fitting result falling back with alias without language
-  $alias = db_result(db_query("SELECT dst FROM " . $prefix . "url_alias WHERE src = '%s' AND language IN('%s', '') ORDER BY language DESC, pid DESC", $path, $path_language));
+  $alias = db_query("SELECT dst FROM " . $prefix . "url_alias WHERE src = '%s' AND language IN('%s', '') ORDER BY language DESC, pid DESC", $path, $path_language)->fetchField();
  
   return $alias;
 }
@@ -977,7 +976,7 @@ function _multisite_search_delete_site($site) {
  * @see variable_get()
  */
 function _multisite_search_get_setting($name, $default) {
-  $result = db_result(db_query("SELECT value FROM {multisite_search_settings} WHERE name = '%s'", $name));
+  $result = db_query("SELECT value FROM {multisite_search_settings} WHERE name = :name", array(':name' => $name))->fetchField();
   if ($result) {
     /* JSON decode */
     return unserialize($result);
