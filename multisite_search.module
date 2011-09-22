@@ -71,6 +71,7 @@ function multisite_search_menu() {
     'access callback' => 'user_access',
     'access arguments' => array('administer multisite search'),
     'type' => MENU_NORMAL_ITEM,
+
   );
   $items['admin/settings/multisite-search/sites'] = array(
     'title' => 'List Sites',
@@ -119,8 +120,8 @@ function multisite_search_menu() {
 /**
  * Menu callback; shows Multisites in a draggable table
  */
-function multisite_search_overview_form($form_state) {
-
+function multisite_search_overview_form($form_state, $build_info) {
+	$form = array();
   $num_sites = db_query("SELECT COUNT(site_id) FROM {multisite_search_sites}")->fetchField();
   
   $form = array(
@@ -257,7 +258,7 @@ function theme_multisite_search_overview_form($form) {
 /**
  * Menu callback for multisite-search/add-site and multisite-search/sites/%/edit
  */
-function multisite_search_form_site(&$form_state, $site_id = NULL) {
+function multisite_search_form_site(&$form_state, $build_info, $site_id = NULL) {
   if ($site_id) {
     $edit = _multisite_search_get_site($site_id);
     $form['site_id'] = array(
@@ -269,14 +270,14 @@ function multisite_search_form_site(&$form_state, $site_id = NULL) {
     '#title' => t('Site name'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => $edit['site_name'],
+    '#default_value' => (!empty($edit) ? $edit['site_name'] : ''),
     '#description' => t('Displayed on the search results page.'),
   );
   $form['site_url'] = array(
     '#title' => t('Site URL'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => $edit['site_url'],
+    '#default_value' => (!empty($edit) ? $edit['site_url'] : ''),
     '#description' => t('The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>'),
   );
   $form['table_prefix'] = array(
@@ -284,7 +285,7 @@ function multisite_search_form_site(&$form_state, $site_id = NULL) {
     '#type' => 'textfield',
     '#size' => 25,
     '#required' => TRUE,
-    '#default_value' => $edit['table_prefix'],
+    '#default_value' => (!empty($edit) ? $edit['table_prefix'] : ''),
     '#description' => t('If the site has a separate database with no table prefix, enter <em>dbname.</em>, including the period.<br />If this site has a table prefix, enter <em>dbname.tbl_prefix_</em> (database name *period* table prefix).'),
   );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
@@ -955,8 +956,7 @@ function _multisite_search_lookup_path($action, $path = '', $path_language = '',
  * Helper function - return site array.
  */
 function _multisite_search_get_site($site_id) {
-  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} WHERE site_id = %s", $site_id);
-  $site = db_fetch_array($query);
+  $site = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} WHERE site_id = :site_id", array(':site_id' => $site_id))->fetchArray();
   return $site;
 }
 
