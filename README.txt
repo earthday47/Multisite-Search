@@ -6,10 +6,12 @@ http://drupal.org/project/apachesolr
 Thanks to lebachai for permission to share with the community.
 This module was initially developed for Cleveland Public Library, a website based on Drupal.
 
+
 REQUIREMENTS
 This modules assumes the following is true:
 - You have a Multisite Drupal installation
 - You are sharing tables (or know how)
+
 
 MULTISITE CONCEPTS
 Drupal can be configured to run multiple websites from a single code base.
@@ -67,26 +69,44 @@ INSTALLATION INSTRUCTIONS
 
 
 TABLE PREFIXING
-The follow are some examples of how to fill out the "Table Prefix" field. It's best to use the 
-database name AND the prefix whenever possible.
+The follow are some examples of how to fill out the "Database Name" and "Table Prefix" field.
+Database name is required even if they're all using the same database.
 
 Example 1: One database, table prefixing
 
 Site 1 - database.site1_
+Database Name: database   Table Prefix: site1_
+
 Site 2 - database.site2_
+Database Name: database   Table Prefix: site2_
+
 Site 3 - database.site3_
+Database Name: database   Table Prefix: site3_
+
 
 Example 2: separate databases, no prefixing
 
 Site 1 - db1.
+Database Name: db1   Table Prefix: (blank)
+
 Site 2 - db2.
+Database Name: db2   Table Prefix: (blank)
+
 Site 3 - db3.
+Database Name: db3   Table Prefix: (blank)
+
 
 Example 3: mixed
 
 Site 1 - db1.
+Database Name: db1   Table Prefix: (blank)
+
 Site 2 - db2.site2_
+Database Name: db2   Table Prefix: site2_
+
 Site 3 - db3.site3_
+Database Name: db3   Table Prefix: site3_
+
 
 
 CONFIGURATION SETTINGS
