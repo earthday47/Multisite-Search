@@ -123,7 +123,7 @@ function multisite_search_overview_form($form_state) {
   );
 
   // get existing sub-sites and format the way theme_table likes
-  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} ORDER BY weight");
+  $query = db_query("SELECT site_id, db_prefix, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} ORDER BY weight");
   while($site = db_fetch_array($query)) {
     //dpm($site);
     $siteid = 'site:' . $site['site_id'];
@@ -132,6 +132,9 @@ function multisite_search_overview_form($form_state) {
     );
     $form[$siteid]['url'] = array(
       '#value' => check_plain($site['site_url']),
+    );
+    $form[$siteid]['database'] = array(
+      '#value' => check_plain($site['db_prefix']),
     );
     $form[$siteid]['prefix'] = array(
       '#value' => check_plain($site['table_prefix']),
@@ -204,6 +207,7 @@ function theme_multisite_search_overview_form($form) {
   $header = array(
     t('Site Name'),
     t('Site URL'),
+    t('Database Name'),
     t('Table Prefix'),
     t('Weight'),
     array('data' => t('Operations'), 'colspan' => '2'),
@@ -231,6 +235,7 @@ function theme_multisite_search_overview_form($form) {
       $row = array();
       $row[] = drupal_render($element['title']);
       $row[] = drupal_render($element['url']);
+      $row[] = drupal_render($element['database']);
       $row[] = drupal_render($element['prefix']);
       $row[] = drupal_render($element['weight']) . drupal_render($element['siteid']);
       $row = array_merge($row, $operations);
@@ -274,20 +279,40 @@ function multisite_search_form_site(&$form_state, $site_id = NULL) {
     '#default_value' => $edit['site_url'],
     '#description' => t('The full URL of the site root. Do not include a trailing /.<br />Example: <em>http://subdomainname.domainname.com</em>'),
   );
+  $form['db_prefix'] = array(
+    '#title' => t('Site database name'),
+    '#type' => 'textfield',
+    '#size' => 25,
+    '#required' => TRUE,
+    '#default_value' => $edit['db_prefix'],
+    '#description' => t('Enter this site\'s database name. Only alphanumeric characters and underscores are allowed.'),
+  );
   $form['table_prefix'] = array(
     '#title' => t('Site table prefix'),
     '#type' => 'textfield',
     '#size' => 25,
-    '#required' => TRUE,
+    '#required' => FALSE,
     '#default_value' => $edit['table_prefix'],
-    '#description' => t('If the site has a separate database with no table prefix, enter <em>dbname.</em>, including the period.<br />If this site has a table prefix, enter <em>dbname.tbl_prefix_</em> (database name *period* table prefix).'),
+    '#description' => t('Enter the table prefix value. Only alphanumeric characters and underscores are allowed.<br>If the site has a separate database with no table prefix, leave this value blank.'),
   );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
   if ($site_id) {
     $form['delete'] = array('#type' => 'submit', '#value' => t('Delete'));
   }
+  $form['#validate'] = array('multisite_search_form_site_validate');
   
   return $form;
+}
+
+function multisite_search_form_site_validate($form, &$form_state) {
+  // Validate the table prefix. This prevents SQL injection vulnerability
+  if (!preg_match('/^[a-zA-Z0-9_]*$/', $form_state['values']['db_prefix'])) {
+    form_set_error('db_prefix', t('Database must be only alphanumeric characters and underscores.'));
+  }
+  // Only allow [A-Z] [0-9] and _
+  if (!preg_match('/^[a-zA-Z0-9_]*$/', $form_state['values']['table_prefix'])) {
+    form_set_error('table_prefix', t('Table prefix must be only alphanumeric characters and underscores.'));
+  }
 }
 
 function multisite_search_form_site_submit($form, &$form_state) {
@@ -598,8 +623,9 @@ function multisite_search_cron() {
   // get all sites 
   $res = db_query("SELECT * FROM {multisite_search_sites}");
   while ($result = db_fetch_array($res)) {
-    // get table prefix 
-    $tblpf = $result['table_prefix'];
+    // assemble query-safe table prefix
+    // see http://drupal.org/node/1482920
+    $tblpf = implode('.', array(db_escape_table($result['db_prefix']), db_escape_table($result['table_prefix'])));
 
     // Get all values from core search's search_dataset table and insert them into multisite dataset    
     $dataset_query = "INSERT INTO {multisite_search_dataset} SELECT sid, type, data, '" . $tblpf . "' AS subdmn_id FROM " . $tblpf . "search_dataset";
@@ -744,9 +770,11 @@ function multisite_search_search($op = 'search', $keys = NULL) {
       $results = array();
       foreach ($find as $item) { 
         // get site table prefix 
-        $tbl_prefix = $item->subdmn_id; 
+        $prefixes = explode('.', $item->subdmn_id);
+        $database = $prefixes[0];
+        $tbl_prefix = $prefixes[1]; 
         // get this table prefix item site url 
-        $msite_sql = db_query("SELECT * FROM {multisite_search_sites} WHERE table_prefix= '%s'", $tbl_prefix);
+        $msite_sql = db_query("SELECT * FROM {multisite_search_sites} WHERE db_prefix = '%s' AND table_prefix= '%s'", $database, $tbl_prefix);
         $msite_res = db_fetch_array($msite_sql);
         $msite_url = $msite_res['site_url'];
         $msite_sitename = $msite_res['site_name'];
@@ -757,13 +785,13 @@ function multisite_search_search($op = 'search', $keys = NULL) {
 
         // Build the node body. 
         /*$node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format, u.uid, u.name, u.picture, u.data FROM " . $tbl_prefix . "node n INNER JOIN drupal_shared.users u ON u.uid = n.uid INNER JOIN " . $tbl_prefix . "node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));*/
-        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format FROM " . $tbl_prefix . "node n INNER JOIN " . $tbl_prefix . "node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));
+        $node = db_fetch_object(db_query("SELECT n.nid, n.vid, n.type, n.status, n.created, n.changed, n.comment, n.promote, n.sticky, r.timestamp AS revision_timestamp, r.title, r.body, r.teaser, r.log, r.format FROM " . $tbl_prefix . "node n INNER JOIN " . db_escape_table($database) . "." . db_escape_table($tbl_prefix) . "node_revisions r ON r.vid = n.vid WHERE n.nid=%d", $item->sid));
 
         // Fetch comments for snippet 
         // Fetch terms for snippet
         $extra = array(); 
         // assuming have to show only total comment 
-        $comments = db_result(db_query('SELECT comment_count FROM '.$tbl_prefix.'node_comment_statistics WHERE nid = %d', $node->nid));
+        $comments = db_result(db_query('SELECT comment_count FROM ' . db_escape_table($database) . "." . db_escape_table($tbl_prefix) . 'node_comment_statistics WHERE nid = %d', $node->nid));
         $extra[] = format_plural($comments, '1 comment', '@count comments');
 
         /**
@@ -784,7 +812,7 @@ function multisite_search_search($op = 'search', $keys = NULL) {
            * Be forgiving; add http:// if they forgot it. Using type equals (===) because
            * the correct value will be 0.
            */
-          'link' => ((strpos($msite_url, 'http://') === 0) ? '' : "http://") . $msite_url . "/" . _multisite_search_get_path_alias('node/' . $item->sid, '', $tbl_prefix),
+          'link' => ((strpos($msite_url, 'http://') === 0) ? '' : "http://") . $msite_url . "/" . _multisite_search_get_path_alias('node/' . $item->sid, '', db_escape_table($database) . "." . db_escape_table($tbl_prefix)),
           'type' => node_get_types('name', $node),
           'title' => $node->title,
           'user' => $tuname,
@@ -948,7 +976,7 @@ function _multisite_search_lookup_path($action, $path = '', $path_language = '',
  * Helper function - return site array.
  */
 function _multisite_search_get_site($site_id) {
-  $query = db_query("SELECT site_id, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} WHERE site_id = %s", $site_id);
+  $query = db_query("SELECT site_id, db_prefix, table_prefix, site_url, site_name, weight FROM {multisite_search_sites} WHERE site_id = %s", $site_id);
   $site = db_fetch_array($query);
   return $site;
 }
